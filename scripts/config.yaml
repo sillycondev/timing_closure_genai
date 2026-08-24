@@ -1,0 +1,33 @@
+paths:
+  liberty: pdk/sky130_fd_sc_hd__tt_025C_1v80.lib
+  raw_rtl: dataset/raw_rtl/
+  output_dataset: dataset/generated_dataset/timing_dataset.jsonl
+  failures_log: dataset/generated_dataset/failures.jsonl
+  workdir: dataset/workdir/
+
+tools:
+  yosys: yosys
+  sta: sta
+  eqy: eqy
+
+synthesis:
+  target_clock_ghz: [1.0, 2.0]
+  input_delay_fraction: 0.2
+  output_delay_fraction: 0.2
+  timeout_seconds: 300
+
+mutations:
+  enabled:
+    - pipeline_insert
+    - register_retime
+    - expression_balance
+  max_per_module: 3
+
+dataset:
+  skip_patterns:
+    - "*_mon.v"
+    - "*_test.v"
+    - "*_test_top.v"
+    - "sas_*.v"
+    - "playback_*.v"
+    - "*.t.v"

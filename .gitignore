@@ -1,0 +1,13 @@
+venv_phase2/
+dataset/
+models/
+
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+
+.env
+*.log
+
+.DS_Store
