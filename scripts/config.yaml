@@ -8,7 +8,10 @@ paths:
 tools:
   yosys: yosys
   sta: sta
-  eqy: eqy
+  # Absolute path: eqy/sby ship in the OSS CAD Suite bundle, which isn't on
+  # the default system PATH (yosys/sta above resolve fine via PATH since
+  # they're separately installed at /usr/bin and /usr/local/bin).
+  eqy: /home/devansh/tools/oss-cad-suite/bin/eqy
 
 synthesis:
   target_clock_ghz: [1.0, 2.0]
@@ -21,7 +24,8 @@ mutations:
     - pipeline_insert
     - register_retime
     - expression_balance
-  max_per_module: 3
+    - strength_reduce
+  max_per_module: 4
 
 dataset:
   skip_patterns:
@@ -31,3 +35,9 @@ dataset:
     - "sas_*.v"
     - "playback_*.v"
     - "*.t.v"
+    # Shared macro/defines header (BaseJump STL), not a synthesizable module
+    # itself — its `BSG_ABSTRACT_MODULE macro's literal template text
+    # ("module fn``__abstract...") false-matches the module-name discovery
+    # regex. Still resolves correctly via `include for the other bsg_*.sv
+    # files, since raw_rtl/ is already on the Yosys include search path.
+    - "bsg_defines.sv"
