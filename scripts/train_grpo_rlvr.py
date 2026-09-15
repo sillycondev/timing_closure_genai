@@ -174,6 +174,34 @@ def main():
     try:
         from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
         from peft import PeftModel, prepare_model_for_kbit_training
+
+        # Newer transformers always returns (bool, version) from
+        # _is_package_available(), even when return_version=False. This trl
+        # release calls it expecting a bare bool for optional-dependency
+        # checks (vllm, mergekit, llm_blender, ...); a non-empty tuple is
+        # truthy, so every one of those checks silently misreports "available"
+        # and trl eagerly imports packages that were never installed. Patching
+        # transformers' shared helper would break transformers' own internal
+        # callers (which correctly expect the new tuple), so instead fix only
+        # trl's already-computed flags after it has (mis)used the new API.
+        import trl.import_utils as _trl_import_utils
+        for _flag_name in dir(_trl_import_utils):
+            if _flag_name.startswith("_") and _flag_name.endswith("_available"):
+                _val = getattr(_trl_import_utils, _flag_name)
+                if isinstance(_val, tuple):
+                    setattr(_trl_import_utils, _flag_name, _val[0])
+
+        # trl's callbacks module unconditionally imports its judges module,
+        # which unconditionally imports llm_blender (unrelated to the plain
+        # reward-function GRPO loop used here) — and llm_blender still
+        # references the long-removed transformers.utils.hub.TRANSFORMERS_CACHE
+        # constant. Restore it as an alias for its modern replacement so that
+        # import succeeds; it's never actually read by anything we use.
+        import transformers.utils.hub as _tf_hub
+        from huggingface_hub.constants import HF_HUB_CACHE as _HF_HUB_CACHE
+        if not hasattr(_tf_hub, "TRANSFORMERS_CACHE"):
+            _tf_hub.TRANSFORMERS_CACHE = _HF_HUB_CACHE
+
         from trl import GRPOTrainer, GRPOConfig
         from datasets import load_dataset
     except ImportError as e:
@@ -209,6 +237,14 @@ def main():
     else:
         model = base_model
 
+    # GRPOTrainer.__init__ does model.warnings_issued["estimate_tokens"] = True
+    # to suppress a token-estimation warning. That attribute was removed from
+    # PreTrainedModel in this transformers version, so without it the
+    # attribute-delegation chain (PeftModel -> LoraModel -> base model) raises
+    # AttributeError. It's pure bookkeeping for a warning we don't care about.
+    if not hasattr(model, "warnings_issued"):
+        model.warnings_issued = {}
+
     # 2. Load Prompts Dataset
     raw_dataset = load_dataset("json", data_files=str(args.dataset), split="train")
 
@@ -221,7 +257,10 @@ def main():
             user_msg = user_msg[:1200]
         return {"prompt": user_msg}
 
-    prompt_dataset = raw_dataset.map(extract_prompt_only)
+    # remove_columns is required: this trl version's chat-template handling
+    # rejects examples carrying leftover columns (e.g. "messages") alongside
+    # "prompt" instead of ignoring them.
+    prompt_dataset = raw_dataset.map(extract_prompt_only, remove_columns=raw_dataset.column_names)
 
     # 3. GRPO Config (tuned for 8GB VRAM)
     grpo_config = GRPOConfig(
@@ -229,7 +268,15 @@ def main():
         num_train_epochs=args.epochs,
         learning_rate=args.lr,
         num_generations=args.num_generations,
-        max_completion_length=256,
+        # 256 was far below the dataset's median completion length (924
+        # tokens) — every generated candidate was truncated mid-module,
+        # missing the closing ```` ``` ```` fence, and hit the reward
+        # function's -5.0 "malformed output" floor uniformly. With every
+        # candidate in a group scoring identically, GRPO's group-relative
+        # advantage is exactly zero everywhere (confirmed: loss=0, grad_norm=0
+        # every step), so no learning ever occurred. 1024 matches the
+        # generation length already used in evaluate_model.py.
+        max_completion_length=1024,
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
         logging_steps=1,

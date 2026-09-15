@@ -1,14 +1,26 @@
 #!/usr/bin/env python3
 """
-mutations.py — RTL Mutation Engine for Timing Closure Dataset Generation
+mutations.py — RTL transform engine for timing-closure dataset generation.
 
-Applies structural transformations to Verilog/SystemVerilog source code to
-produce timing-optimized variants. Works at the text/regex level (not AST).
+Two directions, one transform library:
 
-Mutation types:
-  - PipelineInsert:     Insert pipeline registers to break long combo paths (changes latency)
-  - RegisterRetime:     Convert assign chains to registered stages (preserves function)
-  - ExpressionBalance:  Restructure chained ops into balanced trees (preserves function)
+  FORWARD  (make a violating module faster — used by eda_runner.py)
+    - expression_balance : re-tree an associative operator chain to min depth
+    - pipeline_insert    : split a deep registered assignment into two stages
+    - register_retime    : convert a combinational `assign` chain node to a
+                           registered stage
+    - strength_reduce    : `x * 2**k` -> `x << k`
+
+  INVERSE  (make a passing module slower on purpose, so its *original* source
+            becomes a known-good, human-written "fix" — used by
+            deopt_generate.py)
+    - expression_unbalance : skew a balanced chain into a deep linear tree
+    - pipeline_merge       : fold two pipeline stages into one combinational
+                             path (the transform Yosys/abc cannot undo, so it
+                             reliably creates a real violation)
+
+Everything is source-level and byte-surgical: only the touched span changes,
+the rest of the file (comments, formatting, macros) is preserved verbatim.
 """
 
 import re
@@ -16,56 +28,99 @@ import logging
 from abc import ABC, abstractmethod
 from typing import List, Tuple, Optional
 
+try:  # allow `import mutations` from either cwd
+    from rtl_expr import flatten, balance, skew, split_top_level
+except ImportError:  # pragma: no cover
+    from scripts.rtl_expr import flatten, balance, skew, split_top_level
+
 logger = logging.getLogger(__name__)
 
+# RHS of `assign L = R;`  /  `L <= R;`  /  `L = R;`  (R has no ';' — safe for exprs)
+_ASSIGN_RHS = re.compile(
+    r'(^|[;)\n]\s*)'                      # 1: start-of-statement anchor
+    r'(assign\s+)?'                       # 2: optional 'assign'
+    r'([A-Za-z_]\w*(?:\s*\[[^\]]*\])?)'   # 3: LHS (opt. bit-select)
+    r'\s*(<=|=)\s*'                       # 4: assignment operator
+    r'([^;]+?)'                           # 5: RHS expression
+    r'\s*;'
+)
+_NBA = re.compile(
+    r'(^|[;)\n]\s*)([A-Za-z_]\w*)\s*<=\s*([^;]+?)\s*;'
+)
+_OP_CHARS = re.compile(r'[+\-*/%&|^~<>!]')
+_WORD = lambda w: re.compile(r'\b' + re.escape(w) + r'\b')
 
-# ---------------------------------------------------------------------------
-# Base class
+
+def _expr_weight(expr: str) -> int:
+    """Cheap proxy for combinational depth: operator + paren-group count."""
+    return len(_OP_CHARS.findall(expr)) + expr.count('(')
+
+
 # ---------------------------------------------------------------------------
 class Mutation(ABC):
-    """Base class for all RTL structural mutations."""
-
     @property
     @abstractmethod
-    def name(self) -> str:
-        """Canonical mutation name (snake_case, matches config keys)."""
-        ...
+    def name(self) -> str: ...
 
     @property
     def latency_modified(self) -> bool:
-        """True if this mutation changes the pipeline depth / cycle latency."""
         return False
 
-    @abstractmethod
     def applicable(self, src: str) -> bool:
-        """Return True if this mutation can meaningfully be applied to *src*."""
-        ...
+        return bool(self.apply(src))
 
     @abstractmethod
     def apply(self, src: str, clock_port: str = "clk") -> List[str]:
-        """Return a list of mutated-source variants (may be empty on failure).
-
-        clock_port: the module's actual clock port name, used by mutations
-        that insert new `always @(posedge ...)` blocks (e.g. RegisterRetime).
-        Mutations that don't add clocked logic may ignore it.
-        """
+        """Forward transforms (violating -> faster)."""
         ...
 
+    def apply_inverse(self, src: str, clock_port: str = "clk") -> List[str]:
+        """Inverse transforms (passing -> slower). Default: none."""
+        return []
+
 
 # ---------------------------------------------------------------------------
-# Pipeline Insertion
+class ExpressionBalance(Mutation):
+    """Re-tree an associative operator chain (a+b+c+d, a&b&c&d, ...) to
+    minimum depth. Combinationally equivalent."""
+
+    @property
+    def name(self) -> str:
+        return "expression_balance"
+
+    def _rewrite(self, src: str, mode: str) -> List[str]:
+        variants, seen = [], set()
+        for m in _ASSIGN_RHS.finditer(src):
+            rhs = m.group(5).strip()
+            rhs_start = m.start(5)
+            rhs_end = m.end(5)
+            for op in ("&&", "||", "+", "*", "&", "|", "^"):
+                flat = flatten(rhs, op)
+                if not flat or len(flat) < 3:
+                    continue
+                new_rhs = (balance(flat, op) if mode == "balance"
+                           else skew(flat, op))
+                if "".join(new_rhs.split()) == "".join(rhs.split()):
+                    continue
+                cand = src[:rhs_start] + new_rhs + src[rhs_end:]
+                key = "".join(cand.split())
+                if key not in seen:
+                    seen.add(key)
+                    variants.append(cand)
+                break  # one operator level per RHS
+        return variants
+
+    def apply(self, src: str, clock_port: str = "clk") -> List[str]:
+        return self._rewrite(src, "balance")
+
+    def apply_inverse(self, src: str, clock_port: str = "clk") -> List[str]:
+        return self._rewrite(src, "skew")
+
+
 # ---------------------------------------------------------------------------
 class PipelineInsert(Mutation):
-    """
-    Find registered blocks with complex combinational RHS expressions and
-    split them by inserting an intermediate pipeline register.
-
-    Example:
-        q <= (a + b) * (c + d);
-    Becomes:
-        pipe_0 <= (a + b) * (c + d);   // stage 1
-        q      <= pipe_0;               // stage 2
-    """
+    """Split one deep registered assignment into two pipeline stages.
+    Forward changes latency; inverse (`pipeline_merge`) removes a stage."""
 
     @property
     def name(self) -> str:
@@ -75,225 +130,188 @@ class PipelineInsert(Mutation):
     def latency_modified(self) -> bool:
         return True
 
-    # Match non-blocking assignments with 2+ operators on the RHS
-    _COMPLEX_NBA = re.compile(
-        r'(\s*)(\w+)\s*<=\s*'            # lhs <=
-        r'((?:[^;]*[+\-*/&|^]){2,}[^;]*);'  # rhs with ≥2 operators
-    )
-
-    def applicable(self, src: str) -> bool:
-        return bool(self._COMPLEX_NBA.search(src))
+    MIN_WEIGHT = 3  # only target RHS expressions with real combinational depth
 
     def apply(self, src: str, clock_port: str = "clk") -> List[str]:
-        variants: List[str] = []
-        try:
-            m = self._COMPLEX_NBA.search(src)
-            if not m:
-                return variants
-
-            indent, lhs, rhs = m.group(1), m.group(2), m.group(3)
-            pipe_reg = f"{lhs}_pipe_stg"
-
-            # Replace the single assignment with a two-stage version, wrapped
-            # in begin/end: the original statement may be the sole body of an
-            # if/else branch (e.g. `else acc <= expr;`), and without an
-            # explicit block the second inserted statement would fall outside
-            # the else and execute unconditionally every cycle, racing reset.
-            new_block = (
-                f"{indent}begin\n"
-                f"{indent}    {pipe_reg} <= {rhs};\n"
-                f"{indent}    {lhs} <= {pipe_reg};\n"
-                f"{indent}end"
-            )
-            mutated = src[:m.start()] + new_block + src[m.end():]
-
-            # Inject a reg declaration before the first always block
-            decl = f"  reg [31:0] {pipe_reg};  // pipeline register (auto-inserted)\n"
-            always_pos = mutated.find("always")
-            if always_pos >= 0:
-                mutated = mutated[:always_pos] + decl + mutated[always_pos:]
-
+        variants = []
+        for m in _NBA.finditer(src):
+            anchor, lhs, rhs = m.group(1), m.group(2), m.group(3).strip()
+            if _expr_weight(rhs) < self.MIN_WEIGHT:
+                continue
+            pipe = f"{lhs}_pipe_stg"
+            block = (f"{anchor}begin\n"
+                     f"    {pipe} <= {rhs};\n"
+                     f"    {lhs} <= {pipe};\n"
+                     f"  end")
+            mutated = src[:m.start()] + block + src[m.end():]
+            decl = f"  reg [63:0] {pipe}; // auto-inserted pipeline register\n"
+            pos = mutated.find("always")
+            if pos < 0:
+                continue
+            mutated = mutated[:pos] + decl + mutated[pos:]
             variants.append(mutated)
-        except Exception as e:
-            logger.warning(f"PipelineInsert.apply failed: {e}")
+        return variants
+
+    def apply_inverse(self, src: str, clock_port: str = "clk") -> List[str]:
+        """Fold `A <= <exprA>;  B <= ...A...;` into one combinational path.
+
+        This is the transform Yosys/abc can't undo (it won't re-pipeline),
+        so it reliably lengthens the critical path -> a real violation whose
+        known-good fix is the untouched original source.
+        """
+        variants = []
+        # each NBA statement: (lhs, rhs, stmt_start, stmt_end) where the span
+        # covers exactly `LHS <= RHS ;` (not the leading anchor char)
+        nbas = []
+        for m in _NBA.finditer(src):
+            nbas.append((m.group(2), m.group(3).strip(),
+                         m.start(2), m.end(0)))
+
+        for ai, (a_lhs, a_rhs, a0, a1) in enumerate(nbas):
+            if _expr_weight(a_rhs) < 1:   # A's RHS must do real work (>=1 operator)
+                continue
+            users = [j for j, (b_lhs, b_rhs, *_) in enumerate(nbas)
+                     if j != ai and _WORD(a_lhs).search(b_rhs)]
+            if len(users) != 1:
+                continue
+            bj = users[0]
+            b_lhs, b_rhs, b0, b1 = nbas[bj]
+            # A is safe to fold into B only if A is *read* nowhere except
+            # inside B's RHS. A may be *written* (NBA LHS) any number of times
+            # (e.g. a reset branch + the datapath branch) and declared once.
+            total = len(_WORD(a_lhs).findall(src))
+            as_lhs = len(re.findall(_WORD(a_lhs).pattern + r'\s*<=', src))
+            declared = 1 if re.search(
+                r'\b(?:reg|wire|logic)\b[^;=]*' + _WORD(a_lhs).pattern, src) else 0
+            read_refs = total - as_lhs - declared
+            refs_in_b = len(_WORD(a_lhs).findall(b_rhs))
+            if read_refs != refs_in_b or refs_in_b == 0:
+                continue
+            merged = _WORD(a_lhs).sub(f"({a_rhs})", b_rhs)
+            b_stmt_new = f"{b_lhs} <= {merged};"
+
+            pieces = sorted([(a0, a1, ""), (b0, b1, b_stmt_new)])
+            out, cur = [], 0
+            for s, e, repl in pieces:
+                out.append(src[cur:s])
+                out.append(repl)
+                cur = e
+            out.append(src[cur:])
+            new_src = "".join(out)
+            # tidy: drop a line that is now only whitespace
+            new_src = re.sub(r'\n[ \t]*\n', '\n', new_src, count=1)
+            if new_src != src:
+                variants.append(new_src)
         return variants
 
 
 # ---------------------------------------------------------------------------
-# Register Retiming
-# ---------------------------------------------------------------------------
 class RegisterRetime(Mutation):
-    """
-    Identify chains of combinational `assign` statements and convert one
-    intermediate assign into a registered stage to balance path delays.
-
-    Only converts an internal wire — preserves module I/O interface.
-    """
+    """Convert one intermediate `assign` in a dependency chain into a
+    registered stage. Changes latency of that path."""
 
     @property
     def name(self) -> str:
         return "register_retime"
 
+    @property
+    def latency_modified(self) -> bool:
+        return True
+
     _ASSIGN = re.compile(r'assign\s+(\w+)\s*=\s*([^;]+);')
 
-    def applicable(self, src: str) -> bool:
-        return len(self._ASSIGN.findall(src)) >= 3
-
     def apply(self, src: str, clock_port: str = "clk") -> List[str]:
-        variants: List[str] = []
-        try:
-            assigns = self._ASSIGN.findall(src)
-            if len(assigns) < 3:
-                return variants
-
-            # Build a dependency graph of assign LHS → signals used in RHS
-            lhs_set = {a[0] for a in assigns}
-            # Find an intermediate signal (used in another assign's RHS)
-            target = None
-            for lhs, rhs in assigns:
-                for other_lhs, other_rhs in assigns:
-                    if lhs != other_lhs and re.search(rf'\b{re.escape(lhs)}\b', other_rhs):
-                        target = (lhs, rhs)
-                        break
-                if target:
-                    break
-
-            if not target:
-                return variants
-
-            sig, expr = target
-            mutated = src
-
-            # Convert `assign sig = expr;` → `always @(posedge <clock_port>) sig <= expr;`
-            # Must reference the module's actual clock port — hardcoding "clk"
-            # here would emit a reference to an undeclared signal for any
-            # module whose clock isn't literally named "clk".
-            old = f"assign {sig} = {expr};"
-            new = f"always @(posedge {clock_port}) {sig} <= {expr};"
-            mutated = mutated.replace(old, new, 1)
-
-            # Change wire declaration to reg (if present)
+        assigns = self._ASSIGN.findall(src)
+        if len(assigns) < 3:
+            return []
+        variants, seen = [], set()
+        for lhs, rhs in assigns:
+            if not any(o_lhs != lhs and _WORD(lhs).search(o_rhs)
+                       for o_lhs, o_rhs in assigns):
+                continue
+            old = f"assign {lhs} = {rhs};"
+            new = f"always @(posedge {clock_port}) {lhs} <= {rhs};"
+            mutated = src.replace(old, new, 1)
             mutated = re.sub(
-                rf'(\bwire\b\s*(?:\[[^\]]*\]\s*)?){re.escape(sig)}\b',
-                lambda m: m.group(0).replace("wire", "reg", 1),
-                mutated,
-                count=1,
-            )
-
-            if mutated != src:
+                rf'(\bwire\b\s*(?:\[[^\]]*\]\s*)?){re.escape(lhs)}\b',
+                lambda mm: mm.group(0).replace("wire", "reg", 1), mutated, count=1)
+            key = "".join(mutated.split())
+            if mutated != src and key not in seen:
+                seen.add(key)
                 variants.append(mutated)
-        except Exception as e:
-            logger.warning(f"RegisterRetime.apply failed: {e}")
         return variants
 
 
 # ---------------------------------------------------------------------------
-# Expression Balancing
-# ---------------------------------------------------------------------------
-class ExpressionBalance(Mutation):
-    """
-    Restructure chained binary operations into balanced trees to reduce
-    combinational logic depth.
-
-    Example:  a + b + c + d  →  (a + b) + (c + d)
-    """
+class StrengthReduce(Mutation):
+    """`x * 2**k` -> `x << k`. Combinationally equivalent (two's complement,
+    same result width). Low yield — abc often does this anyway — but free."""
 
     @property
     def name(self) -> str:
-        return "expression_balance"
+        return "strength_reduce"
 
-    # Match 4+ operands chained with the same operator
-    _CHAIN4 = re.compile(
-        r'(\w+)\s*([+&|^])\s*(\w+)\s*\2\s*(\w+)\s*\2\s*(\w+)'
-    )
-    # Match 3 operands
-    _CHAIN3 = re.compile(
-        r'(\w+)\s*([+&|^])\s*(\w+)\s*\2\s*(\w+)'
-    )
-
-    def applicable(self, src: str) -> bool:
-        return bool(self._CHAIN3.search(src))
+    _MUL_POW2 = re.compile(r'([A-Za-z_]\w*(?:\s*\[[^\]]*\])?)\s*\*\s*(\d+)')
 
     def apply(self, src: str, clock_port: str = "clk") -> List[str]:
-        variants: List[str] = []
-        try:
-            mutated = src
-
-            # First try 4-operand balancing
-            def balance4(m):
-                a, op, b, c, d = m.group(1), m.group(2), m.group(3), m.group(4), m.group(5)
-                return f"(({a} {op} {b}) {op} ({c} {op} {d}))"
-
-            result = self._CHAIN4.sub(balance4, mutated)
-            if result != mutated:
-                variants.append(result)
-                return variants
-
-            # Fallback: 3-operand balancing
-            def balance3(m):
-                a, op, b, c = m.group(1), m.group(2), m.group(3), m.group(4)
-                return f"(({a} {op} {b}) {op} {c})"
-
-            result = self._CHAIN3.sub(balance3, mutated)
-            if result != mutated:
-                variants.append(result)
-        except Exception as e:
-            logger.warning(f"ExpressionBalance.apply failed: {e}")
+        variants = []
+        for m in self._MUL_POW2.finditer(src):
+            try:
+                k = int(m.group(2))
+            except ValueError:
+                continue
+            if k < 2 or (k & (k - 1)) != 0:      # not a power of two
+                continue
+            shift = k.bit_length() - 1
+            repl = f"({m.group(1)} << {shift})"
+            variants.append(src[:m.start()] + repl + src[m.end():])
         return variants
 
 
 # ---------------------------------------------------------------------------
-# Convenience API
-# ---------------------------------------------------------------------------
-_ALL_MUTATIONS = [PipelineInsert(), RegisterRetime(), ExpressionBalance()]
+_ALL_MUTATIONS = [ExpressionBalance(), PipelineInsert(), RegisterRetime(),
+                  StrengthReduce()]
 
 
 def get_all_mutations() -> List[Mutation]:
-    """Return instances of all available mutation strategies."""
     return list(_ALL_MUTATIONS)
 
 
-def apply_mutations(
-    rtl_source: str,
-    enabled: Optional[List[str]] = None,
-    max_per_module: int = 3,
-    clock_port: str = "clk",
-) -> List[Tuple[str, str, str, bool]]:
-    """
-    Apply enabled mutations to RTL source code.
+def _select(enabled: Optional[List[str]]) -> List[Mutation]:
+    if not enabled:
+        return _ALL_MUTATIONS
+    return [m for m in _ALL_MUTATIONS if m.name in enabled]
 
-    Args:
-        rtl_source:     Original Verilog/SystemVerilog source.
-        enabled:        List of mutation names to try (None = all).
-        max_per_module: Max number of variants to return.
-        clock_port:     The module's actual clock port name (used by
-                        mutations that insert new registered logic).
 
-    Returns:
-        List of (mutation_name, mutated_source, description, latency_modified)
-    """
-    mutations = _ALL_MUTATIONS
-    if enabled:
-        mutations = [m for m in mutations if m.name in enabled]
-
+def _run(muts: List[Mutation], src: str, clock_port: str, max_per_module: int,
+         inverse: bool) -> List[Tuple[str, str, str, bool]]:
     results: List[Tuple[str, str, str, bool]] = []
-
-    for mut in mutations:
+    for mut in muts:
         if len(results) >= max_per_module:
             break
         try:
-            if not mut.applicable(rtl_source):
-                continue
-            for variant in mut.apply(rtl_source, clock_port):
+            fn = mut.apply_inverse if inverse else mut.apply
+            for variant in fn(src, clock_port):
                 if len(results) >= max_per_module:
                     break
-                results.append((
-                    mut.name,
-                    variant,
-                    f"Applied {mut.name}: {mut.__class__.__doc__.strip().split(chr(10))[0]}",
-                    mut.latency_modified,
-                ))
+                tag = mut.name + ("_inv" if inverse else "")
+                results.append((tag, variant,
+                                f"{'inverse ' if inverse else ''}{mut.name}",
+                                mut.latency_modified))
         except Exception as e:
-            logger.error(f"Error applying {mut.name}: {e}")
-
+            logger.error(f"{mut.name}{'(inv)' if inverse else ''} failed: {e}")
     return results
+
+
+def apply_mutations(rtl_source: str, enabled: Optional[List[str]] = None,
+                    max_per_module: int = 3, clock_port: str = "clk"
+                    ) -> List[Tuple[str, str, str, bool]]:
+    """Forward transforms. Returns (name, mutated_src, description, latency_modified)."""
+    return _run(_select(enabled), rtl_source, clock_port, max_per_module, inverse=False)
+
+
+def apply_inverse_mutations(rtl_source: str, enabled: Optional[List[str]] = None,
+                            max_per_module: int = 3, clock_port: str = "clk"
+                            ) -> List[Tuple[str, str, str, bool]]:
+    """Inverse transforms for break-then-fix data generation."""
+    return _run(_select(enabled), rtl_source, clock_port, max_per_module, inverse=True)

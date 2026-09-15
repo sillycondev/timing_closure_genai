@@ -96,7 +96,6 @@ def main():
         gradient_accumulation_steps=args.grad_accum,
         learning_rate=args.lr,
         lr_scheduler_type="cosine",
-        warmup_ratio=0.1,
         logging_steps=1,
         save_strategy="epoch",
         optim="paged_adamw_8bit",

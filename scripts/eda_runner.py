@@ -216,24 +216,40 @@ def synthesize(module_info: Dict, config: dict, jinja_env: Environment,
 
     ok, stdout, stderr = _attempt_synth(extra_files)
 
-    # Automatic submodule resolution retry
-    if not ok and ("referenced in module" in stderr or "is not part of the design" in stderr):
+    # Automatic submodule resolution retry — iterative, since a module can
+    # depend on submodules that themselves depend on further submodules.
+    # Yosys reports only the next unresolved hierarchy error per run, so a
+    # single retry round only ever fixed the first missing dependency; a
+    # module needing 2+ additional files would resolve the first and then
+    # fail again on the second with no further retry. Loop until synthesis
+    # succeeds or a round finds no new resolvable file (missing entirely, or
+    # already tried), capped to guard against pathological cycles.
+    raw_path = Path(raw_rtl_dir)
+    seen_cells = set()
+    for _round in range(40):
+        if ok or "referenced in module" not in stderr and "is not part of the design" not in stderr:
+            break
+
         missing_cells = re.findall(r"cell `\\?(\w+)' is not part of the design", stderr)
         missing_cells += re.findall(r"Module `\\?(\w+)' referenced in module", stderr)
-        missing_cells = list(set(missing_cells) - {mod})
+        missing_cells = set(missing_cells) - {mod} - seen_cells
+        if not missing_cells:
+            break
+        seen_cells |= missing_cells
 
-        if missing_cells:
-            raw_path = Path(raw_rtl_dir)
-            found_extras = []
-            for cell in missing_cells:
-                for candidate in [raw_path / f"{cell}.v", raw_path / f"{cell}.sv"]:
-                    if candidate.exists() and str(candidate.resolve()) != str(Path(src).resolve()):
-                        found_extras.append(str(candidate.resolve()))
-                        break
+        new_extras = []
+        for cell in missing_cells:
+            for candidate in [raw_path / f"{cell}.v", raw_path / f"{cell}.sv"]:
+                if candidate.exists() and str(candidate.resolve()) != str(Path(src).resolve()):
+                    new_extras.append(str(candidate.resolve()))
+                    break
 
-            if found_extras:
-                logger.debug(f"Retrying synthesis for {mod} with submodules: {found_extras}")
-                ok, stdout, stderr = _attempt_synth(found_extras)
+        if not new_extras:
+            break
+
+        extra_files = list(dict.fromkeys(extra_files + new_extras))
+        logger.debug(f"Retrying synthesis for {mod} (round {_round + 1}) with submodules: {extra_files}")
+        ok, stdout, stderr = _attempt_synth(extra_files)
 
     cell_count = 0
     if ok:
@@ -310,6 +326,21 @@ def run_sta(module_info: Dict, synth_result: Dict, config: dict,
     )
     if not ok:
         return {"success": False, "error": stderr, "raw_report": stdout}
+
+    # OpenSTA can hit a fatal error partway through the script (e.g. it
+    # can't parse a netlist port declared `signed` — a real, confirmed
+    # failure mode) and still exit 0, since the script just runs to its
+    # `exit` command with no timing commands having actually executed.
+    # Trusting the exit code alone silently turns that into a fabricated
+    # "wns_ns: 0.0 / meets timing" result. Require real evidence that
+    # timing analysis actually ran: an explicit Error, or the total
+    # absence of both a wns/tns line and any startpoint/endpoint.
+    if re.search(r'^\s*Error\b', stdout, re.MULTILINE) or \
+       (not re.search(r'\bwns\b', stdout, re.IGNORECASE) and
+        not re.search(r'\btns\b', stdout, re.IGNORECASE)):
+        return {"success": False,
+                "error": "OpenSTA produced no timing report (see raw_report)",
+                "raw_report": stdout}
 
     report = parse_sta_report(stdout)
     report["success"] = True
