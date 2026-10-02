@@ -219,6 +219,10 @@ endmodule
     # expression, just truncated), and stage 2 continues folding the
     # low-order coefficients starting from that partial result — not the
     # other way around, which would evaluate a different polynomial.
+    # Every input stage 2 consumes must be registered alongside stage1_q —
+    # otherwise stage 2 mixes this cycle's x/low coefficients with last
+    # cycle's partial result and computes a different polynomial whenever
+    # the inputs change (caught by latency_equiv: not equivalent at any shift).
     mid = (degree + 1) // 2
     inner_cs, outer_cs = cs[:mid], cs[mid:]        # low coeffs, high coeffs
     stage1_expr = outer_cs[-1]
@@ -226,9 +230,14 @@ endmodule
         stage1_expr = f"(({stage1_expr}) * x + {c})"
     stage2_expr = "stage1_q"
     for c in reversed(inner_cs):
-        stage2_expr = f"(({stage2_expr}) * x + {c})"
+        stage2_expr = f"(({stage2_expr}) * x_q + {c}_q)"
+    delayed = ["x"] + inner_cs
+    d_decls = "\n".join(f"    reg [{width-1}:0] {n}_q;" for n in delayed)
+    d_reset = "\n".join(f"            {n}_q <= 0;" for n in delayed)
+    d_stage = "\n".join(f"            {n}_q <= {n};" for n in delayed)
     pipe = f"""// Auto-generated: degree-{degree} Horner polynomial evaluation, pipelined
-// (first half of the multiply-add chain registered before the second half).
+// (first half of the multiply-add chain registered before the second half;
+// the inputs the second half still needs are registered with it).
 module {mod} (
     input  wire        {clk},
     input  wire        rst_n,
@@ -237,12 +246,15 @@ module {mod} (
     output reg  [{ow-1}:0] y
 );
     reg [{ow-1}:0] stage1_q;
+{d_decls}
     always @(posedge {clk}) begin
         if (!rst_n) begin
             stage1_q <= {ow}'sd0;
+{d_reset}
             y <= {ow}'sd0;
         end else begin
             stage1_q <= {stage1_expr};
+{d_stage}
             y <= {stage2_expr};
         end
     end
@@ -395,11 +407,21 @@ module {mod} (
     end
 endmodule
 """
+    # The high-priority half's selects/data must be registered alongside
+    # tail_q, or stage 2 mixes this cycle's inputs with last cycle's partial
+    # result (caught by latency_equiv: not equivalent at any shift).
     mid = n_levels // 2
     tail_expr = fold(sels[mid:], ds[mid:], f"{width}'d0")   # low-priority half
-    head_expr = fold(sels[:mid], ds[:mid], "tail_q")        # high-priority half
+    head_expr = fold([f"{s}_q" for s in sels[:mid]],
+                     [f"{d}_q" for d in ds[:mid]], "tail_q")  # high-priority half
+    d_decls = "\n".join([f"    reg {s}_q;" for s in sels[:mid]] +
+                        [f"    reg [{width-1}:0] {d}_q;" for d in ds[:mid]])
+    delayed = sels[:mid] + ds[:mid]
+    d_reset = "\n".join(f"            {n}_q <= 0;" for n in delayed)
+    d_stage = "\n".join(f"            {n}_q <= {n};" for n in delayed)
     pipe = f"""// Auto-generated: {n_levels}-level priority mux, pipelined
-// (low-priority half of the chain registered before the high-priority half).
+// (low-priority half of the chain registered before the high-priority half;
+// the high-priority selects/data are registered with it).
 module {mod} (
     input  wire {clk},
     input  wire rst_n,
@@ -408,12 +430,15 @@ module {mod} (
     output reg  [{width-1}:0] y
 );
     reg [{width-1}:0] tail_q;
+{d_decls}
     always @(posedge {clk}) begin
         if (!rst_n) begin
             tail_q <= {width}'d0;
+{d_reset}
             y <= {width}'d0;
         end else begin
             tail_q <= {tail_expr};
+{d_stage}
             y <= {head_expr};
         end
     end
@@ -423,46 +448,54 @@ endmodule
 
 
 def gen_shift_acc(seed: int, width: int, shamt_bits: int) -> Tuple[str, str, str, str]:
-    """Barrel-shift + accumulate: acc <= (acc << sh) + (din >> sh) + din.
+    """Barrel-shift-add: acc <= (a << sh) + (b >> sh) + c, feed-forward.
 
-    Pipelines by registering the two shifted values before the final add —
-    the shift-and-add of a wide operand by a variable amount is genuinely
-    deep (a real barrel shifter, not a constant shift abc can trivially
-    absorb), so splitting it out is a real win.
+    The earlier version accumulated into its own output (acc << sh) and the
+    "pipelined" variant registered that feedback term — which changes the
+    recurrence; a loop cannot be pipelined without altering behaviour
+    (latency_equiv: not equivalent at any shift). The family is therefore
+    feed-forward now: two variable barrel shifts feeding a 3-input add is
+    still genuinely deep, and registering the shifted operands is a real,
+    equivalent (shift-1) win.
     """
     mod = f"{_name_for('shift_acc', seed)}_w{width}_s{shamt_bits}_{seed}"
     clk = _clk_for(seed)
-    flat = f"""// Auto-generated: barrel-shift accumulate, single-cycle.
+    flat = f"""// Auto-generated: barrel-shift add, single-cycle.
 module {mod} (
     input  wire {clk},
     input  wire rst_n,
-    input  wire [{width-1}:0] din,
+    input  wire [{width-1}:0] a,
+    input  wire [{width-1}:0] b,
+    input  wire [{width-1}:0] c,
     input  wire [{shamt_bits-1}:0] sh,
     output reg  [{width-1}:0] acc
 );
     always @(posedge {clk}) begin
         if (!rst_n) acc <= {width}'d0;
-        else        acc <= (acc << sh) + (din >> sh) + din;
+        else        acc <= (a << sh) + (b >> sh) + c;
     end
 endmodule
 """
-    pipe = f"""// Auto-generated: barrel-shift accumulate, pipelined
-// (both shifted operands registered one cycle before the final add).
+    pipe = f"""// Auto-generated: barrel-shift add, pipelined
+// (both shifted operands and the third addend registered before the add).
 module {mod} (
     input  wire {clk},
     input  wire rst_n,
-    input  wire [{width-1}:0] din,
+    input  wire [{width-1}:0] a,
+    input  wire [{width-1}:0] b,
+    input  wire [{width-1}:0] c,
     input  wire [{shamt_bits-1}:0] sh,
     output reg  [{width-1}:0] acc
 );
-    reg [{width-1}:0] shl_q, shr_q;
+    reg [{width-1}:0] shl_q, shr_q, c_q;
     always @(posedge {clk}) begin
         if (!rst_n) begin
-            shl_q <= 0; shr_q <= 0; acc <= {width}'d0;
+            shl_q <= 0; shr_q <= 0; c_q <= 0; acc <= {width}'d0;
         end else begin
-            shl_q <= acc << sh;
-            shr_q <= din >> sh;
-            acc   <= shl_q + shr_q + din;
+            shl_q <= a << sh;
+            shr_q <= b >> sh;
+            c_q   <= c;
+            acc   <= shl_q + shr_q + c_q;
         end
     end
 endmodule
@@ -481,30 +514,34 @@ TEMPLATES: Dict[str, Callable] = {
 }
 
 # (template, width, size-param) grid — size-param means n_terms/n_in/degree/
-# n_pairs/n_levels/shamt_bits depending on family. Roughly balanced instance
-# counts per family so no single one can dominate the resulting dataset the
-# way adder_tree/horner did in the first sweep (mac/horner involve real
-# multipliers — no DSP macros on sky130 std cells, so capped at
-# n_terms/degree<=6 to keep synth time reasonable; xor_reduce is excluded,
-# see gen_crc_xor's docstring).
+# n_pairs/n_levels/shamt_bits depending on family. mac/horner involve real
+# multipliers (no DSP macros on sky130 std cells) so their width stays
+# capped at 48 to keep per-job synth time reasonable — an array multiplier's
+# gate count grows roughly with width^2. The other four families are
+# adder/comparator/mux/shifter based (near-linear gate count in width), so
+# their width sweeps extend up to 512 bits to match the widest real corpus
+# modules seen in evaluation (§8 width-ceiling limitation) — previously the
+# whole grid topped out at 48 bits, which is the diagnosed cause of the
+# current checkpoint's failure on wide inputs. xor_reduce stays excluded,
+# see gen_crc_xor's docstring.
 GRID: List[Tuple[str, int, int]] = []
-for w in (8, 16, 24, 32):
-    for n in (3, 4, 6):
+for w in (8, 16, 24, 32, 48):
+    for n in (2, 3, 4, 5, 6):
         GRID.append(("mac", w, n))
-for w in (8, 16, 24, 32):
-    for n in (6, 8, 12, 16):
+for w in (8, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512):
+    for n in (6, 8, 12, 16, 24):
         GRID.append(("adder_tree", w, n))
-for w in (8, 12, 16, 24):
-    for d in (3, 4, 6):
+for w in (8, 12, 16, 24, 32, 48):
+    for d in (2, 3, 4, 5, 6):
         GRID.append(("horner", w, d))
-for w in (16, 24, 32, 48):
-    for n in (3, 4, 6):
+for w in (16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512):
+    for n in (2, 3, 4, 5, 6):
         GRID.append(("compare_chain", w, n))
-for w in (16, 24, 32):
-    for n in (12, 16, 20, 24):  # nested ternary muxes are shallow per level on
-        GRID.append(("priority_mux", w, n))  # sky130; need deep chains to violate
-for w in (16, 24, 32, 48):
-    for s in (4, 5):
+for w in (16, 24, 32, 48, 64, 96):
+    for n in (8, 12, 16, 20, 24, 28):  # nested ternary muxes are shallow per
+        GRID.append(("priority_mux", w, n))  # level on sky130; need deep chains to violate
+for w in (16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512):
+    for s in (3, 4, 5, 6, 7):
         GRID.append(("shift_acc", w, s))
 
 
@@ -550,6 +587,14 @@ def verify_pair(mod: str, clk: str, flat_src: str, pipe_src: str,
     if gap < min_gap_ns:
         return {"module": mod, "note": f"insufficient gap ({gap:+.2f}ns)"}
 
+    # "Correct by construction" was asserted, not checked, until three of six
+    # families turned out to produce non-equivalent pipelines. Every pair is
+    # now simulated side by side and must match at some fixed latency shift.
+    from latency_equiv import check_latency_equiv
+    eq = check_latency_equiv(flat_src, pipe_src, mod, clk, workdir / mod / "latency_equiv")
+    if eq.get("equivalent") is not True:
+        return {"module": mod, "note": f"NOT EQUIVALENT ({eq.get('reason', 'sim check failed')})"}
+
     if not keep_rtl:
         for suffix in ("_flat", "_pipe"):
             for f in (workdir / f"{mod}{suffix}.v", workdir / f"{mod}{suffix}_netlist.v"):
@@ -562,10 +607,12 @@ def verify_pair(mod: str, clk: str, flat_src: str, pipe_src: str,
         "fixed_rtl": pipe_src,
         "fixed_timing_report": {k: v for k, v in p_sta.items() if k != "raw_report"},
         "timing_improvement_ns": gap,
-        "equivalence_verified": None,  # pipelining changes latency by construction
+        "equivalence_verified": True,
+        "equivalence_method": f"sim_latency_shift_{eq['shift']}",
         "mutation_type": f"synthetic_{family}_pipeline",
         "mutation_description": "template-generated: flat vs. pipelined version of "
-                                "the same computation; correctness by construction",
+                                "the same computation; latency-tolerant simulation "
+                                f"equivalence at shift {eq['shift']}",
         "latency_modified": True,
         "synthesis_cell_count": {"original": fs["cell_count"], "fixed": ps["cell_count"]},
     }

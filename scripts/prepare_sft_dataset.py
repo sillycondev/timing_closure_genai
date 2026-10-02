@@ -93,7 +93,13 @@ def main():
             # 2. Never train on a "fix" that doesn't actually help — a
             #    neutral or timing-worsening rewrite is negative signal
             #    and is the main reason earlier models learnt nothing.
-            if entry.get("timing_improvement_ns", 0.0) < args.min_improvement_ns:
+            #    Exception: a deliberate identity pair (original == fixed)
+            #    teaches restraint on already-passing input, and 0.0ns
+            #    improvement is correct by construction there, not a failed
+            #    mutation — confirmed needed after a checkpoint "fixed" an
+            #    already-passing 512-bit module into an 8.74ns violation.
+            is_identity = entry.get("original_rtl") == entry.get("fixed_rtl")
+            if not is_identity and entry.get("timing_improvement_ns", 0.0) < args.min_improvement_ns:
                 skipped_noimprove += 1
                 continue
 
