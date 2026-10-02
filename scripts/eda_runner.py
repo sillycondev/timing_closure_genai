@@ -164,13 +164,24 @@ def discover_modules(raw_rtl_dir: str, skip_patterns: List[str]) -> List[Dict[st
 # Subprocess helper
 # ---------------------------------------------------------------------------
 def _run(cmd: List[str], cwd: Path, timeout: int) -> Tuple[bool, str, str]:
-    """Run a command, return (ok, stdout, stderr)."""
+    """Run a command, return (ok, stdout, stderr).
+
+    The tools are launched in their own session so a timeout kills the whole
+    process group: the oss-cad-suite binaries are shell wrappers, and killing
+    only the wrapper left the real yosys/abc underneath running for hours
+    after every timed-out synthesis, quietly eating a core each.
+    """
+    import os, signal
     try:
-        p = subprocess.run(cmd, cwd=str(cwd), timeout=timeout,
-                           capture_output=True, text=True)
-        return p.returncode == 0, p.stdout, p.stderr
-    except subprocess.TimeoutExpired:
-        return False, "", f"TIMEOUT after {timeout}s"
+        p = subprocess.Popen(cmd, cwd=str(cwd), stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE, text=True, start_new_session=True)
+        try:
+            out, err = p.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            os.killpg(p.pid, signal.SIGKILL)
+            p.communicate()
+            return False, "", f"TIMEOUT after {timeout}s"
+        return p.returncode == 0, out, err
     except Exception as e:
         return False, "", str(e)
 
@@ -256,6 +267,17 @@ def synthesize(module_info: Dict, config: dict, jinja_env: Environment,
         cm = re.search(r"Number of cells:\s+(\d+)", stdout) or re.search(r"^\s*(\d+)\s+[\d.E+-]+\s+cells", stdout, re.MULTILINE)
         if cm:
             cell_count = int(cm.group(1))
+        # Yosys keeps `integer` loop variables as `wire signed [31:0] i;` in the
+        # netlist and OpenSTA's Verilog reader rejects `signed` with a syntax
+        # error (41 of 155 external modules; the old fir_tap4 case). Signedness
+        # carries no meaning in a structural gate-level netlist, so drop it.
+        try:
+            np = Path(netlist)
+            txt = np.read_text()
+            if re.search(r"\bsigned\b", txt):
+                np.write_text(re.sub(r"\bsigned\s+", "", txt))
+        except OSError as e:
+            logger.warning(f"could not post-process netlist {netlist}: {e}")
 
     return {
         "success":      ok,
