@@ -32,6 +32,11 @@ The fallback means the reported result can never be worse than the input design:
 
 Two SFT runs on the same 134-record training set and the same benchmark:
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/results_dark.png">
+  <img alt="Bar chart of average WNS gain for two training runs. Single-shot: +7.2 and +2.3 ns. Best-of-4 timing only: +4.7 and +8.1 ns. Best-of-4 with functional gate: +4.1 and +1.4 ns." src="docs/img/results_light.png" width="760">
+</picture>
+
 | Metric (avg WNS gain, 20 modules) | Run A (`bestofn_v134_gated.log`) | Run B (`bestofn_v4_gated.log`) |
 |---|---|---|
 | Single-shot, greedy, no checks | +7.23 ns (13/20 synthesise) | +2.27 ns (12/20 synthesise) |
