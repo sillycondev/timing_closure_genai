@@ -1,0 +1,2 @@
+Wrote 134 SFT records to dataset/generated_dataset/sft_dataset.jsonl
+  skipped 36 (EQY proved non-equivalent), 154 (WNS improvement < 0.05ns), 38 (over --max-per-type 30)

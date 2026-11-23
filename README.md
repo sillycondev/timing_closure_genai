@@ -1,223 +1,124 @@
-# Automated RTL Timing Closure GenAI Framework using GRPO RLVR & Open-Source EDA Tools
+# LLM-Driven RTL Timing Closure, Verified by a Real ASIC Flow
 
-An end-to-end Machine Learning and Electronic Design Automation (EDA) framework for automated Verilog RTL timing closure. This project fine-tunes Large Language Models (LLMs) using **Group Relative Policy Optimization (GRPO RLVR)** with real-time feedback from open-source CAD tools (**Yosys Synthesis**, **OpenSTA Static Timing Analysis**, and **EQY Formal Equivalence Verification**) mapped to the **SkyWater 130nm Standard Cell Library**.
+A small code LLM (Qwen2.5-Coder-1.5B, 4-bit QLoRA) is fine-tuned to rewrite Verilog that fails timing. Nothing it produces is trusted: every candidate is re-synthesised with **Yosys**, timed with **OpenSTA** on the **SkyWater 130nm** (`sky130_fd_sc_hd`) library, and checked for functional equivalence before it can count as an improvement.
 
----
-
-## 📌 Architecture Overview
-
-```
-                        ┌─────────────────────────────────────────────────────────────┐
-                        │                 LLM Policy Generation                       │
-                        │        (Qwen2.5-Coder-1.5B-Instruct + QLoRA)               │
-                        └──────────────────────────────┬──────────────────────────────┘
-                                                       │  Generates RTL Candidates
-                                                       ▼
-                        ┌─────────────────────────────────────────────────────────────┐
-                        │             Automated Real-Time EDA Feedback                │
-                        │ ┌──────────────────────┬──────────────────────────────────┐ │
-                        │ │   Yosys Synthesis    │  SkyWater 130nm Cell Library     │ │
-                        │ ├──────────────────────┼──────────────────────────────────┤ │
-                        │ │   OpenSTA Timing     │  Worst Negative Slack (WNS/TNS)   │ │
-                        │ ├──────────────────────┼──────────────────────────────────┤ │
-                        │ │ EQY Equivalence Check│  Formal Equivalence Proof        │ │
-                        │ └──────────────────────┴──────────────────────────────────┘ │
-                        └──────────────────────────────┬──────────────────────────────┘
-                                                       │ Compute RL Rewards:
-                                                       │   + Verilog Format (+1.0)
-                                                       │   + Synthesis Pass / Fail (-3.0)
-                                                       │   + ΔWNS Improvement (+1.0 x ΔWNS)
-                                                       │   + Timing Closure Bonus (+3.0)
-                                                       ▼
-                        ┌─────────────────────────────────────────────────────────────┐
-                        │                 GRPO RLVR Policy Update                     │
-                        │       (Relative Advantage Estimation across G Candidates)  │
-                        └─────────────────────────────────────────────────────────────┘
-```
+The main result is about the verification as much as the model. Timing-only scoring makes the model look much better than it is. Once a functional gate is added, the gains shrink and become honest, and the same gate exposed bad training data that had been assumed correct.
 
 ---
 
-## 📁 Repository Structure
+## Pipeline
 
 ```
-timing_closure_genai/
-├── dataset/
-│   ├── raw_rtl/                 # 176+ benchmark Verilog/SystemVerilog source files
-│   ├── generated_dataset/
-│   │   ├── timing_dataset.jsonl # 36 extracted timing violation records
-│   │   └── sft_dataset.jsonl    # ChatML formatted training dataset
-│   ├── workdir/                 # Workspace directory for synthesis & STA runs
-│   └── workdir_eval/            # Workspace directory for model evaluation
-├── models/
-│   ├── sft_lora_checkpoint/     # Stage 1 SFT QLoRA adapter weights
-│   └── grpo_rlvr_checkpoint/    # Stage 2 GRPO RLVR trained adapter weights
-├── pdk/
-│   └── sky130_fd_sc_hd__tt_025C_1v80.lib  # SkyWater 130nm Liberty Cell Library
-├── rtl/
-│   ├── gcd.v                    # Reference RTL designs
-│   └── gcd_synth.v              # Synthesized gate-level netlists
-├── scripts/
-│   ├── config.yaml              # Centralized EDA toolchain configuration
-│   ├── eda_runner.py            # Yosys, OpenSTA & EQY orchestration script
-│   ├── mutations.py             # Structural Verilog mutation engine
-│   ├── prepare_sft_dataset.py   # Dataset ChatML formatting tool
-│   ├── train_sft.py             # Stage 1 4-bit QLoRA SFT training script
-│   ├── train_grpo_rlvr.py       # Stage 2 GRPO RLVR training loop
-│   ├── evaluate_model.py        # Benchmark evaluation & metrics script
-│   └── templates/               # Jinja2 TCL & EQY script templates
-│       ├── synth_sky130.tcl.j2
-│       ├── run_sta.tcl.j2
-│       └── verify_equiv.eqy.j2
-└── README.md                    # Project documentation
+ violating RTL + OpenSTA report
+            │
+            ▼
+   LLM (Qwen2.5-Coder-1.5B + QLoRA)  ──►  N candidate rewrites (1 greedy + N-1 sampled)
+                                                  │
+                    ┌─────────────────────────────┼──────────────────────────────┐
+                    ▼                             ▼                              ▼
+          interface check               Yosys + OpenSTA (sky130)        functional check
+       (same module name/ports)        must synthesise and improve WNS   EQY (cycle-exact) or
+                                                                         latency-tolerant simulation
+                    └─────────────────────────────┬──────────────────────────────┘
+                                                  ▼
+                        best verified candidate, else fall back to the original RTL
 ```
 
----
+The fallback means the reported result can never be worse than the input design: zero regressions by construction.
 
-## 🛠️ Prerequisites & Setup
+## Results
 
-### 1. Hardware Requirements
-- **GPU**: NVIDIA GPU with at least 8 GB VRAM (e.g. NVIDIA GeForce RTX 4060 / RTX 3060 / T4).
-- **OS**: Linux x86_64.
+**Held-out benchmark:** 20 modules the model never saw, all violating timing at 1 GHz: 10 synthetic (from the template generator) and 10 real modules from the project's RTL corpus. The run logs behind every number are in `logs/`.
 
-### 2. Open-Source EDA Toolchain
-Install the **OSS CAD Suite** (Yosys, OpenSTA, EQY, SymbiYosys):
-```bash
-# Sourced binaries must be accessible in your system PATH:
-which yosys sta eqy sby
+Two SFT runs on the same 134-record training set and the same benchmark:
+
+| Metric (avg WNS gain, 20 modules) | Run A (`bestofn_v134_gated.log`) | Run B (`bestofn_v4_gated.log`) |
+|---|---|---|
+| Single-shot, greedy, no checks | +7.23 ns (13/20 synthesise) | +2.27 ns (12/20 synthesise) |
+| Best-of-4, timing only (no functional gate) | +4.73 ns | +8.14 ns |
+| **Best-of-4 + functional gate + fallback** | **+4.10 ns (11/20 improved)** | **+1.39 ns (3/20 improved)** |
+| — synthetic half | +7.50 ns (10/10) | +2.09 ns (2/10) |
+| — real half | +0.69 ns (1/10) | +0.69 ns (1/10) |
+| Timing closure (final WNS ≥ 0) | 1/20 | 1/20 |
+| Reference-fix oracle, synthetic half | +7.48 ns | +7.48 ns |
+
+How to read this:
+- **The functional gate matters.** In run B, timing-only selection reports +8.14 ns, but only +1.39 ns of that survives a functional check. Most of the "faster" rewrites were wrong.
+- **Run-to-run variance is large.** Identical data and settings gave +4.10 ns and +1.39 ns. Both numbers are reported here; neither should be quoted alone.
+- **Almost all of the gain is on synthetic modules.** Real RTL improved on 1 module of 10 in both runs.
+
+**Real-RTL generalisation:** `screen_external_rtl.py` screened 10 open-source repositories (verilog-ethernet, verilog-pcie, verilog-axi, verilog-i2c, verilog-wishbone, verilog-uart, wb2axip, picorv32, zipcpu, cores) and found **114 self-contained modules that violate timing**. The model produced **no verified fix on any of them** (`logs/bestofn_realheldout_v4.log`: 0/13 on a held-out subset). On 200–400-line designs it re-transcribes the whole module and introduces copy errors instead of applying a local transform. The verification stack rejects all of it, which is the intended behaviour. The proposed next step is a **targeted-edit formulation**: the model emits a small patch to the critical path rather than regenerating the file.
+
+## What the verification caught
+
+- **EQY cannot judge pipelining.** A pipelining fix changes latency, so cycle-exact formal equivalence always reports a failure, whether the rewrite is right or wrong. `latency_equiv.py` simulates the original and the rewrite side by side (Icarus Verilog, ~3000 cycles of mixed random and boundary stimulus) and accepts only if the outputs match at one fixed latency shift. It is a falsifier, not a proof.
+- **Bad training data.** Three of the six synthetic template families (`horner`, `priority_mux`, `shift_acc`) generated "fixed" pipelined variants that were not functionally equivalent to the originals. That was over half of the training data. The generator now gates every pair on the simulation check.
+- **Plausible but wrong rewrites.** Before the functional gate existed, three of four "improved" real modules turned out to be functionally broken.
+- **Pipeline bugs.** Generation was capped at 1024 tokens, which truncated 31 of 33 real-module rewrites mid-file; the budget now scales with module size. OpenSTA's netlist reader rejected `signed`, silently dropping 41 of 155 external modules. Orphaned Yosys processes are now killed on timeout.
+
+## Model and training data
+
+- **Base model:** `Qwen/Qwen2.5-Coder-1.5B-Instruct`, 4-bit NF4 QLoRA (r = 16, α = 32), 3 epochs, fits in 8 GB of VRAM (trained on an RTX 4060 laptop GPU).
+- **Training data:** template-generated pairs of violating and fixed RTL across operand widths from 8 to 512 bits. Every pair is synthesised and timed, and kept only if the fix improves WNS and passes the functional check. Generator v3 kept 162 of 261 pairs; the final SFT set has 134 records (36 removed as non-equivalent, 154 for improving WNS by less than 0.05 ns, 38 by a per-family cap).
+- **Tried and reverted:** "already meets timing, leave it alone" examples (`identity_generate.py`) made the model regurgitate memorised modules. Forward regex mutation (`eda_runner.py`, `mutations.py`) has a low hit rate because Yosys/ABC already performs most source-level rebalancing.
+- **Not used for the results above:** `train_grpo_rlvr.py` implements a GRPO reinforcement-learning stage with EDA rewards, but it has not been trained or evaluated.
+
+## Repository layout
+
+```
+scripts/
+  synth_corpus_generate.py   template-based violating/fixed RTL pairs (the main data source)
+  prepare_sft_dataset.py     filter and format pairs into ChatML for SFT
+  train_sft.py               QLoRA supervised fine-tuning
+  build_heldout_benchmark.py held-out benchmark of genuinely violating, unseen modules
+  evaluate_bestofn.py        best-of-N with interface, timing and functional gates + fallback
+  latency_equiv.py           latency-tolerant simulation equivalence check
+  screen_external_rtl.py     screen cloned open-source repos for violating modules
+  harvest_real_fixes.py      rejection sampling on real modules, verified end to end
+  demo.py                    single-module demo: baseline WNS, one rewrite, new WNS, diff
+  eda_runner.py, mutations.py, rtl_expr.py, deopt_generate.py, rejection_sample.py
+                             earlier data-generation approaches (kept for reference)
+  train_grpo_rlvr.py         GRPO stage (implemented, not yet used)
+  templates/                 Yosys, OpenSTA and EQY script templates
+  config.yaml                tool paths, clock targets, dataset options
+rtl/                         demo designs
+pdk/                         sky130_fd_sc_hd typical-corner Liberty file
+logs/                        run logs for the results above
 ```
 
-### 3. Python ML Dependencies
-Install the required PyTorch and Hugging Face libraries:
-```bash
-pip3 install torch transformers peft trl bitsandbytes datasets accelerate pyyaml jinja2
-```
+The datasets, cloned external RTL and LoRA weights are not included in the repository (see `.gitignore`).
 
----
+## Setup
 
-## 🚀 Step-by-Step Instructions
+Linux x86_64. A GPU with 8 GB of VRAM is enough for training and inference.
 
-### Step 1: Run EDA Pipeline & Generate Timing Dataset
-Synthesize raw RTL benchmark modules, extract OpenSTA timing violations, apply structural mutations (`register_retime`, `pipeline_insert`, `expression_balance`), and produce training records:
+1. **EDA tools:** Yosys and OpenSTA on your `PATH`, plus the [OSS CAD Suite](https://github.com/YosysHQ/oss-cad-suite-build) for EQY, SymbiYosys and Icarus Verilog. Set the `eqy` path in `scripts/config.yaml`. `latency_equiv.py` expects the suite at `~/tools/oss-cad-suite/bin`; edit `TOOLS` there if yours is elsewhere.
+2. **Python:**
+   ```bash
+   pip install torch transformers peft trl bitsandbytes datasets accelerate pyyaml jinja2
+   ```
 
-```bash
-# Run EDA dataset generation
-python3 scripts/eda_runner.py
-
-# Format into ChatML prompt-response pairs
-python3 scripts/prepare_sft_dataset.py
-```
-*Output generated*: `dataset/generated_dataset/sft_dataset.jsonl`
-
----
-
-### Step 2: Stage 1 Supervised Fine-Tuning (SFT Warmup)
-Train the base model (`Qwen/Qwen2.5-Coder-1.5B-Instruct`) with 4-bit NF4 QLoRA on ChatML timing fix pairs:
+## Usage
 
 ```bash
+# 1. Generate verified training pairs and format them for SFT
+python3 scripts/synth_corpus_generate.py --output dataset/generated_dataset/synthetic_dataset.jsonl
+python3 scripts/prepare_sft_dataset.py --input dataset/generated_dataset/synthetic_dataset.jsonl --max-per-type 30
+
+# 2. Fine-tune
 python3 scripts/train_sft.py --model Qwen/Qwen2.5-Coder-1.5B-Instruct --epochs 3
-```
-*Output generated*: `models/sft_lora_checkpoint`  
-*Metrics achieved*: Loss = **0.3093**, Token Accuracy = **92.24%**.
 
----
+# 3. Build the held-out benchmark and evaluate with tool-verified best-of-4
+python3 scripts/build_heldout_benchmark.py
+python3 scripts/evaluate_bestofn.py --model models/sft_lora_checkpoint --n 4
 
-### Step 3: Stage 2 GRPO RLVR Reinforcement Learning
-Train the SFT policy model using Group Relative Policy Optimization with automated Yosys and OpenSTA reward feedback:
+# Single-module demo
+python3 scripts/demo.py rtl/demo_adder_chain.v --model models/sft_lora_checkpoint --clock-ghz 1.0
 
-```bash
-PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True python3 scripts/train_grpo_rlvr.py \
-    --model models/sft_lora_checkpoint \
-    --epochs 1 \
-    --num_generations 2
-```
-*Output generated*: `models/grpo_rlvr_checkpoint`  
-*Reward Signal*: Verilog formatting, Yosys synthesis pass/fail, and OpenSTA Worst Negative Slack improvement ($\Delta\text{WNS}$).
-
----
-
-### Step 4: Evaluate & Benchmark the Model
-Evaluate the trained GRPO RLVR model across test RTL modules:
-
-```bash
-# Evaluate GRPO RLVR checkpoint
-python3 scripts/evaluate_model.py --model models/grpo_rlvr_checkpoint --limit 10
-
-# Compare against SFT baseline checkpoint
-python3 scripts/evaluate_model.py --model models/sft_lora_checkpoint --limit 10
+# Check a rewrite for latency-tolerant equivalence on its own
+python3 scripts/latency_equiv.py original.v rewritten.v <module_name> --clock clk
 ```
 
----
+## License
 
-## 📊 Benchmark Results
-
-Evaluated on test modules from the benchmark timing dataset:
-
-| Benchmark Metric | Measured Score |
-| :--- | :--- |
-| **Syntax Pass Rate** | **100.0%** (10/10) |
-| **Synthesis Pass Rate (Yosys + Sky130)** | **90.0%** (9/10) |
-| **Timing Closure Rate (WNS $\ge$ 0)** | **40.0%** (4/10) |
-| **Max Single-Path WNS Improvement** | **+0.0700 ns** |
-
----
-
-## 💡 Running Inference on Custom Verilog Modules
-
-To optimize a custom Verilog module for timing closure in Python:
-
-```python
-import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
-from peft import PeftModel
-
-base_model_id = "Qwen/Qwen2.5-Coder-1.5B-Instruct"
-adapter_dir = "models/grpo_rlvr_checkpoint"
-
-# Load tokenizer and 4-bit base model with LoRA adapter
-tokenizer = AutoTokenizer.from_pretrained(adapter_dir)
-base_model = AutoModelForCausalLM.from_pretrained(
-    base_model_id,
-    torch_dtype=torch.bfloat16,
-    device_map="cuda"
-)
-model = PeftModel.from_pretrained(base_model, adapter_dir)
-
-# Define prompt with original Verilog and OpenSTA timing violation details
-prompt = """<|im_start|>system
-You are an expert IC digital design assistant specializing in RTL timing closure optimization for ASIC designs using SkyWater 130nm PDK. Your goal is to rewrite the input Verilog RTL module to fix timing violations (Worst Negative Slack WNS < 0) while maintaining functional correctness.
-<|im_end|>
-<|im_start|>user
-Target Clock Frequency: 1.0 GHz (Period: 1.0000 ns)
-Current Timing Violation:
-- Worst Negative Slack (WNS): -2.6000 ns
-- Critical Path Startpoint: q
-- Critical Path Endpoint: out
-
-Original Verilog Code:
-```verilog
-module Counter (
-    input wire clk,
-    input wire reset,
-    output reg [7:0] q
-);
-    always @(posedge clk or posedge reset) begin
-        if (reset) q <= 8'd0;
-        else q <= q + 1'b1;
-    end
-endmodule
-```
-Provide the optimized Verilog code enclosed in ```verilog ... ```.
-<|im_end|>
-<|im_start|>assistant
-"""
-
-# Generate fix
-inputs = tokenizer(prompt, return_tensors="pt").to("cuda")
-outputs = model.generate(**inputs, max_new_tokens=256, temperature=0.2)
-print(tokenizer.decode(outputs[0], skip_special_tokens=True))
-```
-
----
-
-## 📜 License
-Licensed under the Apache License 2.0. Standard Cell Library parameters subject to SkyWater 130nm Open Source PDK terms.
+Apache License 2.0 (see `LICENSE`). The Liberty file in `pdk/` is from the SkyWater SKY130 open-source PDK and is covered by that project's Apache 2.0 terms.

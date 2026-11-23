@@ -1,0 +1,162 @@
+========================================================================
+Best-of-4 evaluation  |  model=models/sft_lora_checkpoint  |  20 samples
+========================================================================
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights:   0%|          | 1/338 [00:00<01:00,  5.57it/s]Loading weights:   6%|▌         | 21/338 [00:00<00:03, 91.66it/s]Loading weights:  15%|█▌        | 52/338 [00:00<00:01, 174.61it/s]Loading weights:  26%|██▌       | 87/338 [00:00<00:01, 234.71it/s]Loading weights:  35%|███▍      | 117/338 [00:00<00:00, 255.06it/s]Loading weights:  44%|████▍     | 148/338 [00:00<00:00, 269.51it/s]Loading weights:  54%|█████▍    | 183/338 [00:00<00:00, 290.22it/s]Loading weights:  63%|██████▎   | 213/338 [00:00<00:00, 292.14it/s]Loading weights:  72%|███████▏  | 244/338 [00:00<00:00, 295.46it/s]Loading weights:  83%|████████▎ | 279/338 [00:01<00:00, 305.21it/s]Loading weights:  92%|█████████▏| 310/338 [00:01<00:00, 274.06it/s]Loading weights: 100%|██████████| 338/338 [00:01<00:00, 248.80it/s]
+
+[1/20] heldout_dsp_accum_w20_t4_5001__synth_gen_000  (synthetic_heldout, original WNS -16.83ns)
+    greedy   WNS -16.64  (delta +0.19)
+    sample1  WNS -16.64  (delta +0.19)
+    sample2  WNS -16.64  (delta +0.19)
+    sample3  WNS -16.64  (delta +0.19)
+  -> selected greedy: delta +0.19ns, verified by sim_shift_1
+
+[2/20] heldout_vec_sum_w12_n8_5003__synth_gen_000  (synthetic_heldout, original WNS -6.05ns)
+    greedy   WNS -4.58  (delta +1.47)
+    sample1  WNS -4.58  (delta +1.47)
+    sample2  WNS -4.58  (delta +1.47)
+    sample3  WNS -4.58  (delta +1.47)
+  -> selected greedy: delta +1.47ns, verified by sim_shift_1
+
+[3/20] heldout_tree_add_w40_n12_5004__synth_gen_000  (synthetic_heldout, original WNS -19.19ns)
+    greedy   WNS -16.43  (delta +2.76)
+    sample1  WNS -16.43  (delta +2.76)
+    sample2  WNS -16.43  (delta +2.76)
+    sample3  WNS -16.43  (delta +2.76)
+  -> selected greedy: delta +2.76ns, verified by sim_shift_1
+
+[4/20] heldout_sum_tree_w72_n8_5005__synth_gen_000  (synthetic_heldout, original WNS -29.66ns)
+    greedy   WNS -19.47  (delta +10.19)
+    sample1  WNS -19.47  (delta +10.19)
+    sample2  WNS -19.47  (delta +10.19)
+    sample3  WNS -18.90  (delta +10.76)
+  -> selected sample3: delta +10.76ns, verified by sim_shift_1
+
+[5/20] heldout_adder_net_w160_n16_5006__synth_gen_000  (synthetic_heldout, original WNS -70.14ns)
+    greedy   WNS -59.18  (delta +10.96)
+    sample1  WNS -59.18  (delta +10.96)
+    sample2  WNS -59.18  (delta +10.96)
+    sample3  WNS -59.18  (delta +10.96)
+  -> selected greedy: delta +10.96ns, verified by sim_shift_1
+
+[6/20] heldout_reduce_add_w320_n8_5007__synth_gen_000  (synthetic_heldout, original WNS -85.76ns)
+    greedy   WNS -49.24  (delta +36.52)
+    sample1  WNS -49.24  (delta +36.52)
+    sample2  WNS -49.24  (delta +36.52)
+    sample3  WNS -49.24  (delta +36.52)
+  -> selected greedy: delta +36.52ns, verified by sim_shift_1
+
+[7/20] heldout_series_eval_w20_d3_5008__synth_gen_000  (synthetic_heldout, original WNS -18.71ns)
+    greedy   WNS -15.48  (delta +3.23)
+    sample1  WNS -15.48  (delta +3.23)
+    sample2  WNS -15.48  (delta +3.23)
+    sample3  WNS -15.48  (delta +3.23)
+  -> selected greedy: delta +3.23ns, verified by sim_shift_1
+
+[8/20] heldout_shift_add_w40_s4_5015__synth_gen_000  (synthetic_heldout, original WNS -12.34ns)
+    greedy   WNS -9.94  (delta +2.40)
+    sample1  WNS -9.94  (delta +2.40)
+    sample2  WNS -9.94  (delta +2.40)
+    sample3  WNS -9.94  (delta +2.40)
+  -> selected greedy: delta +2.40ns, verified by sim_shift_1
+
+[9/20] heldout_barrel_acc_w72_s5_5016__synth_gen_000  (synthetic_heldout, original WNS -17.69ns)
+    greedy   WNS -14.67  (delta +3.02)
+    sample1  WNS -14.67  (delta +3.02)
+    sample2  WNS -14.67  (delta +3.02)
+    sample3  WNS -14.67  (delta +3.02)
+  -> selected greedy: delta +3.02ns, verified by sim_shift_1
+
+[10/20] heldout_scale_unit_w320_s4_5018__synth_gen_000  (synthetic_heldout, original WNS -49.44ns)
+    greedy   WNS -45.72  (delta +3.72)
+    sample1  WNS -45.72  (delta +3.72)
+    sample2  WNS -45.72  (delta +3.72)
+    sample3  WNS -45.72  (delta +3.72)
+  -> selected greedy: delta +3.72ns, verified by sim_shift_1
+
+[11/20] heldout_real_spi_master_16  (real_corpus, original WNS -58.82ns)
+    greedy   rejected: synthesis failed
+    sample1  rejected: synthesis failed
+    sample2  rejected: synthesis failed
+    sample3  rejected: synthesis failed
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[12/20] heldout_real_bw_r_rf32x152b_5  (real_corpus, original WNS -51.02ns)
+    greedy   WNS -48.78  (delta +2.24)
+    sample1  WNS -51.12  (delta -0.10)
+    sample2  WNS -49.18  (delta +1.84)
+    sample3  rejected: synthesis failed
+    greedy   improved timing but FAILED functional check — rejected
+    sample2  improved timing but FAILED functional check — rejected
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[13/20] heldout_real_mac32_13  (real_corpus, original WNS -21.54ns)
+    greedy   WNS -11.12  (delta +10.42)
+    sample1  rejected: synthesis failed
+    sample2  rejected: synthesis failed
+    sample3  WNS -19.70  (delta +1.84)
+    greedy   improved timing but FAILED functional check — rejected
+    sample3  improved timing but FAILED functional check — rejected
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[14/20] heldout_real_uart_serializer_19  (real_corpus, original WNS -20.27ns)
+    greedy   rejected: synthesis failed
+    sample1  rejected: synthesis failed
+    sample2  rejected: synthesis failed
+    sample3  rejected: synthesis failed
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[15/20] heldout_real_async_fifo_3  (real_corpus, original WNS -14.70ns)
+    greedy   rejected: synthesis failed
+    sample1  rejected: synthesis failed
+    sample2  rejected: synthesis failed
+    sample3  rejected: synthesis failed
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[16/20] heldout_real_fpga_bridge_rcv_32_11  (real_corpus, original WNS -10.94ns)
+    greedy   rejected: synthesis failed
+    sample1  rejected: synthesis failed
+    sample2  rejected: synthesis failed
+    sample3  rejected: synthesis failed
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[17/20] heldout_real_barrel_mac_4  (real_corpus, original WNS -10.21ns)
+    greedy   rejected: module name / port list changed
+    sample1  rejected: module name / port list changed
+    sample2  rejected: synthesis failed
+    sample3  rejected: module name / port list changed
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[18/20] heldout_real_ssd_1306_init_17  (real_corpus, original WNS -7.38ns)
+    greedy   rejected: synthesis failed
+    sample1  rejected: synthesis failed
+    sample2  rejected: synthesis failed
+    sample3  rejected: synthesis failed
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[19/20] heldout_real_adder_tree8_2  (real_corpus, original WNS -6.91ns)
+    greedy   WNS +0.00  (delta +6.91)
+    sample1  WNS +0.00  (delta +6.91)
+    sample2  WNS +0.00  (delta +6.91)
+    sample3  WNS +0.00  (delta +6.91)
+    greedy   improved timing but FAILED functional check — rejected
+  -> selected sample1: delta +6.91ns, verified by sim_shift_3
+
+[20/20] heldout_real_that_8  (real_corpus, original WNS -3.78ns)
+    greedy   rejected: module name / port list changed
+    sample1  rejected: module name / port list changed
+    sample2  rejected: module name / port list changed
+    sample3  rejected: module name / port list changed
+  -> no verified improvement; keeping original RTL (delta 0)
+
+========================================================================
+SUMMARY
+  samples                                  : 20
+  single-shot (greedy, no fallback)        : avg delta +7.233 ns  [13/20 synthesized; rest excluded]
+  best-of-4 timing-only (no function gate): avg delta +4.730 ns
+  best-of-4 + FUNCTION GATE + fallback    : avg delta +4.097 ns  [11/20 verified improvements, 9 kept original]
+  timing closure rate (final WNS >= 0)     : 1/20
+  verification methods among selected      : {'sim_shift_1': 10, 'sim_shift_3': 1}
+  oracle (reference fix) avg delta         : +7.478 ns over 10 synthetic samples
+    synthetic_heldout  gated avg delta +7.503 ns over 10  (10 verified improvements)
+    real_corpus        gated avg delta +0.691 ns over 10  (1 verified improvements)
+========================================================================

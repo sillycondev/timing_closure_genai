@@ -1,0 +1,178 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights:   5%|▍         | 16/338 [00:00<00:02, 152.93it/s]Loading weights:  25%|██▍       | 83/338 [00:00<00:00, 449.78it/s]Loading weights:  44%|████▍     | 149/338 [00:00<00:00, 540.81it/s]Loading weights:  65%|██████▍   | 219/338 [00:00<00:00, 594.65it/s]Loading weights:  83%|████████▎ | 281/338 [00:00<00:00, 601.01it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 574.98it/s]
+========================================================================
+Best-of-4 evaluation  |  model=models/sft_lora_checkpoint  |  20 samples
+========================================================================
+
+[1/20] heldout_dsp_accum_w20_t4_5001__synth_gen_000  (synthetic_heldout, original WNS -16.83ns)
+    greedy   WNS -15.96  (delta +0.87)
+    sample1  rejected: synthesis failed
+    sample2  WNS -7.91  (delta +8.92)
+    sample3  WNS -13.15  (delta +3.68)
+    sample2  improved timing but FAILED functional check — rejected
+    sample3  improved timing but FAILED functional check — rejected
+    greedy   improved timing but FAILED functional check — rejected
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[2/20] heldout_vec_sum_w12_n8_5003__synth_gen_000  (synthetic_heldout, original WNS -6.05ns)
+    greedy   rejected: synthesis failed
+    sample1  WNS -4.71  (delta +1.34)
+    sample2  rejected: synthesis failed
+    sample3  WNS -6.05  (delta +0.00)
+    sample1  improved timing but FAILED functional check — rejected
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[3/20] heldout_tree_add_w40_n12_5004__synth_gen_000  (synthetic_heldout, original WNS -19.19ns)
+    greedy   rejected: synthesis failed
+    sample1  WNS -8.14  (delta +11.05)
+    sample2  rejected: synthesis failed
+    sample3  rejected: synthesis failed
+    sample1  improved timing but FAILED functional check — rejected
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[4/20] heldout_sum_tree_w72_n8_5005__synth_gen_000  (synthetic_heldout, original WNS -29.66ns)
+    greedy   WNS -11.72  (delta +17.94)
+    sample1  WNS -19.47  (delta +10.19)
+    sample2  WNS -19.47  (delta +10.19)
+    sample3  rejected: synthesis failed
+    greedy   improved timing but FAILED functional check — rejected
+  -> selected sample1: delta +10.19ns, verified by sim_shift_1
+
+[5/20] heldout_adder_net_w160_n16_5006__synth_gen_000  (synthetic_heldout, original WNS -70.14ns)
+    greedy   WNS -59.41  (delta +10.73)
+    sample1  WNS -59.41  (delta +10.73)
+    sample2  WNS -70.14  (delta +0.00)
+    sample3  rejected: synthesis failed
+  -> selected greedy: delta +10.73ns, verified by sim_shift_1
+
+[6/20] heldout_reduce_add_w320_n8_5007__synth_gen_000  (synthetic_heldout, original WNS -85.76ns)
+    greedy   rejected: synthesis failed
+    sample1  WNS -51.19  (delta +34.57)
+    sample2  WNS -51.19  (delta +34.57)
+    sample3  rejected: synthesis failed
+    sample1  improved timing but FAILED functional check — rejected
+    sample2  improved timing but FAILED functional check — rejected
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[7/20] heldout_series_eval_w20_d3_5008__synth_gen_000  (synthetic_heldout, original WNS -18.71ns)
+    greedy   rejected: synthesis failed
+    sample1  WNS -10.03  (delta +8.68)
+    sample2  WNS -14.80  (delta +3.91)
+    sample3  rejected: synthesis failed
+    sample1  improved timing but FAILED functional check — rejected
+    sample2  improved timing but FAILED functional check — rejected
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[8/20] heldout_shift_add_w40_s4_5015__synth_gen_000  (synthetic_heldout, original WNS -12.34ns)
+    greedy   rejected: synthesis failed
+    sample1  rejected: synthesis failed
+    sample2  rejected: synthesis failed
+    sample3  rejected: synthesis failed
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[9/20] heldout_barrel_acc_w72_s5_5016__synth_gen_000  (synthetic_heldout, original WNS -17.69ns)
+    greedy   rejected: synthesis failed
+    sample1  rejected: synthesis failed
+    sample2  rejected: synthesis failed
+    sample3  rejected: synthesis failed
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[10/20] heldout_scale_unit_w320_s4_5018__synth_gen_000  (synthetic_heldout, original WNS -49.44ns)
+    greedy   rejected: synthesis failed
+    sample1  rejected: synthesis failed
+    sample2  rejected: synthesis failed
+    sample3  rejected: synthesis failed
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[11/20] heldout_real_spi_master_16  (real_corpus, original WNS -58.82ns)
+    greedy   WNS -58.82  (delta +0.00)
+    sample1  WNS -58.82  (delta +0.00)
+    sample2  WNS -58.82  (delta +0.00)
+    sample3  rejected: synthesis failed
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[12/20] heldout_real_bw_r_rf32x152b_5  (real_corpus, original WNS -51.02ns)
+    greedy   WNS -67.04  (delta -16.02)
+    sample1  WNS -63.70  (delta -12.68)
+    sample2  rejected: synthesis failed
+    sample3  WNS -1.16  (delta +49.86)
+    sample3  improved timing but FAILED functional check — rejected
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[13/20] heldout_real_mac32_13  (real_corpus, original WNS -21.54ns)
+    greedy   WNS -19.37  (delta +2.17)
+    sample1  WNS -19.93  (delta +1.61)
+    sample2  WNS -13.81  (delta +7.73)
+    sample3  WNS -13.36  (delta +8.18)
+    sample3  improved timing but FAILED functional check — rejected
+    sample2  improved timing but FAILED functional check — rejected
+    greedy   improved timing but FAILED functional check — rejected
+    sample1  improved timing but FAILED functional check — rejected
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[14/20] heldout_real_uart_serializer_19  (real_corpus, original WNS -20.27ns)
+    greedy   WNS -20.27  (delta +0.00)
+    sample1  WNS -20.27  (delta +0.00)
+    sample2  rejected: STA failed
+    sample3  WNS -20.27  (delta +0.00)
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[15/20] heldout_real_async_fifo_3  (real_corpus, original WNS -14.70ns)
+    greedy   WNS -14.70  (delta +0.00)
+    sample1  WNS -14.70  (delta +0.00)
+    sample2  WNS -14.70  (delta +0.00)
+    sample3  WNS -14.70  (delta +0.00)
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[16/20] heldout_real_fpga_bridge_rcv_32_11  (real_corpus, original WNS -10.94ns)
+    greedy   WNS -10.94  (delta +0.00)
+    sample1  WNS -10.94  (delta +0.00)
+    sample2  WNS -10.94  (delta +0.00)
+    sample3  WNS -10.94  (delta +0.00)
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[17/20] heldout_real_barrel_mac_4  (real_corpus, original WNS -10.21ns)
+    greedy   WNS -5.56  (delta +4.65)
+    sample1  rejected: synthesis failed
+    sample2  WNS -5.56  (delta +4.65)
+    sample3  rejected: synthesis failed
+    greedy   improved timing but FAILED functional check — rejected
+    sample2  improved timing but FAILED functional check — rejected
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[18/20] heldout_real_ssd_1306_init_17  (real_corpus, original WNS -7.38ns)
+    greedy   WNS -7.38  (delta +0.00)
+    sample1  WNS -7.38  (delta +0.00)
+    sample2  WNS -7.38  (delta +0.00)
+    sample3  WNS -7.38  (delta +0.00)
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[19/20] heldout_real_adder_tree8_2  (real_corpus, original WNS -6.91ns)
+    greedy   WNS +0.00  (delta +6.91)
+    sample1  WNS +0.00  (delta +6.91)
+    sample2  WNS +0.00  (delta +6.91)
+    sample3  WNS +0.00  (delta +6.91)
+    greedy   improved timing but FAILED functional check — rejected
+    sample1  improved timing but FAILED functional check — rejected
+    sample2  improved timing but FAILED functional check — rejected
+  -> selected sample3: delta +6.91ns, verified by eqy
+
+[20/20] heldout_real_that_8  (real_corpus, original WNS -3.78ns)
+    greedy   rejected: module name / port list changed
+    sample1  rejected: module name / port list changed
+    sample2  rejected: module name / port list changed
+    sample3  rejected: module name / port list changed
+  -> no verified improvement; keeping original RTL (delta 0)
+
+========================================================================
+SUMMARY
+  samples                                  : 20
+  single-shot (greedy, no fallback)        : avg delta +2.271 ns  [12/20 synthesized; rest excluded]
+  best-of-4 timing-only (no function gate): avg delta +8.142 ns
+  best-of-4 + FUNCTION GATE + fallback    : avg delta +1.392 ns  [3/20 verified improvements, 17 kept original]
+  timing closure rate (final WNS >= 0)     : 1/20
+  verification methods among selected      : {'sim_shift_1': 2, 'eqy': 1}
+  oracle (reference fix) avg delta         : +7.478 ns over 10 synthetic samples
+    synthetic_heldout  gated avg delta +2.092 ns over 10  (2 verified improvements)
+    real_corpus        gated avg delta +0.691 ns over 10  (1 verified improvements)
+========================================================================

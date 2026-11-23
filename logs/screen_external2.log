@@ -1,0 +1,159 @@
+155 self-contained clocked candidates: {'cores': 6, 'picorv32': 1, 'verilog-axi': 25, 'verilog-ethernet': 50, 'verilog-i2c': 5, 'verilog-pcie': 26, 'verilog-uart': 2, 'verilog-wishbone': 6, 'wb2axip': 17, 'zipcpu': 17}
+  cores__i2s                                              synth failed: ERROR: Multiple edge sensitive events found for this signal!
+  cores__ftdi_sync                                        WNS -0.29  cells 98
+  cores__usbf_sie_ep                                      WNS -1.03  cells 156
+  cores__usbf_fifo                                        WNS -1.14  cells 111
+  cores__uart                                             WNS -1.75  cells 281
+  cores__spdif_core                                       WNS -1.63  cells 260
+  picorv32__simpleuart                                    WNS -3.19  cells 819
+  verilog-axi__axi_adapter_rd                             WNS -2.76  cells 230
+  verilog-axi__axi_adapter_wr                             WNS -6.88  cells 240
+  verilog-axi__axi_axil_adapter_rd                        WNS -5.27  cells 398
+  verilog-axi__axi_axil_adapter_wr                        WNS -3.77  cells 441
+  verilog-axi__axi_crossbar_addr                          STA failed
+  verilog-axi__axi_ram_rd_if                              WNS -3.29  cells 231
+  verilog-axi__axi_register_rd                            WNS -1.73  cells 221
+  verilog-axi__axi_ram_wr_if                              WNS -3.18  cells 233
+  verilog-axi__axi_fifo_wr                                WNS -14.23  cells 1985
+  verilog-axi__axi_register_wr                            WNS -2.05  cells 219
+  verilog-axi__axi_dma_rd                                 WNS -36.72  cells 3459
+  verilog-axi__axil_adapter_rd                            WNS -1.64  cells 157
+  verilog-axi__axil_adapter_wr                            WNS -3.54  cells 109
+  verilog-axi__axi_vfifo_dec                              WNS -36.95  cells 4090
+  verilog-axi__axil_crossbar_addr                         STA failed
+  verilog-axi__axi_vfifo_raw_wr                           WNS -317.02  cells 10439
+  verilog-axi__axil_reg_if_rd                             WNS -0.72  cells 114
+  verilog-axi__axi_vfifo_enc                              WNS -11.53  cells 6195
+  verilog-axi__axil_reg_if_wr                             WNS -0.67  cells 159
+  verilog-axi__axil_register_rd                           WNS -0.52  cells 81
+  verilog-axi__axil_register_wr                           WNS -0.56  cells 91
+  verilog-ethernet__axis_adapter                          WNS +0.00  cells 0
+  verilog-axi__axi_vfifo_raw_rd                           WNS -7.16  cells 18553
+  verilog-ethernet__axis_broadcast                        WNS -0.63  cells 58
+  verilog-ethernet__axis_cobs_decode                      WNS -1.16  cells 180
+  verilog-ethernet__axis_crosspoint                       WNS -0.48  cells 156
+  verilog-ethernet__axis_demux                            WNS -1.25  cells 100
+  verilog-ethernet__axis_frame_join                       WNS -1.10  cells 158
+  verilog-ethernet__axis_frame_len                        WNS -2.00  cells 100
+  verilog-ethernet__axis_frame_length_adjust              WNS -2.74  cells 764
+  verilog-ethernet__axis_ll_bridge                        WNS +0.00  cells 10
+  verilog-ethernet__axis_mux                              WNS -0.87  cells 90
+  verilog-ethernet__axis_pipeline_fifo                    WNS -3.15  cells 447
+  verilog-ethernet__axis_rate_limit                       WNS -5.13  cells 367
+  verilog-ethernet__axis_register                         WNS -0.54  cells 46
+  verilog-ethernet__axis_srl_fifo                         WNS -8.58  cells 320
+  verilog-ethernet__axis_srl_register                     WNS -0.22  cells 61
+  verilog-ethernet__axis_stat_counter                     WNS -8.85  cells 708
+  verilog-ethernet__axis_tap                              WNS -0.70  cells 81
+  verilog-ethernet__ll_axis_bridge                        WNS +0.00  cells 3
+  verilog-ethernet__sync_reset                            WNS +0.00  cells 4
+  verilog-ethernet__arp_eth_rx                            WNS -3.16  cells 485
+  verilog-ethernet__arp_eth_tx                            WNS -11.16  cells 663
+  verilog-ethernet__eth_axis_rx                           WNS -0.96  cells 218
+  verilog-ethernet__eth_axis_tx                           WNS -2.56  cells 462
+  verilog-ethernet__eth_demux                             WNS -3.03  cells 237
+  verilog-ethernet__eth_mux                               WNS -3.15  cells 558
+  verilog-ethernet__eth_phy_10g_rx_ber_mon                WNS -2.37  cells 79
+  verilog-ethernet__eth_phy_10g_rx_frame_sync             WNS -0.78  cells 71
+  verilog-ethernet__eth_phy_10g_rx_watchdog               WNS -3.13  cells 157
+  verilog-ethernet__ip_demux                              WNS -7.07  cells 400
+  verilog-ethernet__ip_eth_tx                             WNS -11.98  cells 1691
+  verilog-ethernet__ip_eth_tx_64                          WNS -8.46  cells 1620
+  verilog-ethernet__ip_mux                                WNS -23.02  cells 1219
+  verilog-ethernet__mac_ctrl_rx                           WNS -9.04  cells 1263
+  verilog-ethernet__mac_ctrl_tx                           WNS -4.31  cells 642
+  verilog-ethernet__mac_pause_ctrl_rx                     WNS -3.03  cells 1924
+  verilog-ethernet__mac_pause_ctrl_tx                     WNS -5.36  cells 2062
+  verilog-ethernet__ptp_clock                             WNS -8.22  cells 2482
+  verilog-ethernet__ptp_tag_insert                        WNS -0.07  cells 38
+  verilog-ethernet__axis_fifo                             WNS -24527.75  cells 82132
+  verilog-ethernet__axis_async_fifo                       WNS -113.11  cells 83421
+  verilog-ethernet__ptp_td_rel2tod                        WNS -9.83  cells 1491
+  verilog-ethernet__ptp_ts_extract                        WNS +0.00  cells 4
+  verilog-ethernet__udp_demux                             WNS -8.68  cells 466
+  verilog-ethernet__ptp_td_phc                            WNS -10.34  cells 3585
+  verilog-ethernet__udp_ip_rx_64                          WNS -19.30  cells 910
+  verilog-ethernet__udp_ip_tx                             WNS -9.15  cells 635
+  verilog-ethernet__udp_ip_tx_64                          WNS -17.04  cells 1061
+  verilog-ethernet__xgmii_baser_dec_64                    WNS -1.78  cells 737
+  verilog-ethernet__xgmii_baser_enc_64                    WNS -2.12  cells 692
+  verilog-ethernet__udp_mux                               WNS -9.97  cells 1460
+  verilog-i2c__i2c_init                                   WNS -6.25  cells 486
+  verilog-i2c__i2c_master                                 WNS -3.22  cells 413
+  verilog-i2c__i2c_single_reg                             WNS -1.67  cells 160
+  verilog-i2c__i2c_slave                                  WNS -1.31  cells 234
+  verilog-pcie__dma_client_axis_source                    WNS -111.16  cells 5396
+  verilog-pcie__dma_client_axis_sink                      WNS -140.98  cells 15630
+  verilog-pcie__dma_if_axi_rd                             WNS -509.94  cells 40299
+  verilog-i2c__axis_fifo                                  WNS -23685.07  cells 81861
+  verilog-pcie__dma_psdpram                               WNS -31.56  cells 58608
+  verilog-pcie__dma_if_pcie_us_rd                         WNS -462.51  cells 61232
+  verilog-pcie__dma_ram_demux_rd                          WNS -68.60  cells 9669
+  verilog-pcie__dma_ram_demux_wr                          WNS -4.59  cells 1064
+  verilog-pcie__dma_if_pcie_rd                            WNS -1602.67  cells 90707
+  verilog-axi__axil_dp_ram                                STA failed
+  verilog-pcie__pcie_axi_master_wr                        WNS -1060.22  cells 23652
+  verilog-pcie__dma_psdpram_async                         WNS -2.16  cells 58802
+  verilog-pcie__pcie_ptile_cfg                            WNS -2.85  cells 1723
+  verilog-pcie__pcie_ptile_fc_counter                     WNS -6.66  cells 440
+  verilog-pcie__pcie_tlp_fc_count                         WNS -0.78  cells 93
+  verilog-pcie__pcie_s10_cfg                              WNS -3.19  cells 1281
+  verilog-pcie__pcie_tlp_mux                              WNS -151.54  cells 4630
+  verilog-pcie__irq_rate_limit                            WNS -605.01  cells 99067
+  verilog-pcie__pcie_us_axi_dma_rd                        WNS -75.53  cells 29592
+  verilog-pcie__pcie_us_axi_dma_wr                        WNS -33.62  cells 9292
+  verilog-pcie__pcie_us_axil_master                       WNS -7.31  cells 986
+  verilog-pcie__pcie_us_axi_master_wr                     WNS -40.43  cells 5425
+  verilog-pcie__pcie_us_axis_cq_demux                     WNS -16.73  cells 1096
+  verilog-pcie__pcie_us_axis_rc_demux                     WNS -11.20  cells 1071
+  verilog-pcie__pulse_merge                               WNS -0.58  cells 34
+  verilog-pcie__pcie_us_cfg                               WNS -2.14  cells 188
+  verilog-uart__uart_tx                                   WNS -4.30  cells 197
+  verilog-uart__uart_rx                                   WNS -4.25  cells 231
+  verilog-wishbone__wb_async_reg                          WNS -1.75  cells 694
+  verilog-wishbone__axis_wb_master                        WNS -4.76  cells 692
+  verilog-wishbone__wb_mux_2                              WNS -3.89  cells 253
+  verilog-pcie__pcie_tlp_fifo_raw                         WNS -151037.77  cells 216312
+  verilog-wishbone__wb_reg                                WNS -1.54  cells 425
+  wb2axip__fapb_master                                    synth failed: /home/devansh/Projects/timing_closure_genai/dataset/external_rtl/wb2axip/bench/formal/fapb
+  wb2axip__fapb_slave                                     synth failed: /home/devansh/Projects/timing_closure_genai/dataset/external_rtl/wb2axip/bench/formal/fapb
+  wb2axip__faxil_master                                   synth failed: /home/devansh/Projects/timing_closure_genai/dataset/external_rtl/wb2axip/bench/formal/faxi
+  wb2axip__faxil_register                                 synth failed: /home/devansh/Projects/timing_closure_genai/dataset/external_rtl/wb2axip/bench/formal/faxi
+  wb2axip__faxil_slave                                    synth failed: /home/devansh/Projects/timing_closure_genai/dataset/external_rtl/wb2axip/bench/formal/faxi
+  wb2axip__faxis_master                                   synth failed: /home/devansh/Projects/timing_closure_genai/dataset/external_rtl/wb2axip/bench/formal/faxi
+  wb2axip__faxis_slave                                    synth failed: /home/devansh/Projects/timing_closure_genai/dataset/external_rtl/wb2axip/bench/formal/faxi
+  wb2axip__fwb_master                                     synth failed: /home/devansh/Projects/timing_closure_genai/dataset/external_rtl/wb2axip/bench/formal/fwb_
+  wb2axip__fwb_register                                   synth failed: /home/devansh/Projects/timing_closure_genai/dataset/external_rtl/wb2axip/bench/formal/fwb_
+  wb2axip__fwb_slave                                      synth failed: /home/devansh/Projects/timing_closure_genai/dataset/external_rtl/wb2axip/bench/formal/fwb_
+  wb2axip__fwbc_master                                    synth failed: /home/devansh/Projects/timing_closure_genai/dataset/external_rtl/wb2axip/bench/formal/fwbc
+  wb2axip__fwbc_slave                                     synth failed: /home/devansh/Projects/timing_closure_genai/dataset/external_rtl/wb2axip/bench/formal/fwbc
+  wb2axip__addrdecode                                     WNS +0.00  cells 15
+  wb2axip__afifo                                          WNS -3.75  cells 387
+  wb2axip__axisrandom                                     WNS -0.07  cells 100
+  wb2axip__axissafety                                     WNS -0.52  cells 96
+  wb2axip__sfifo                                          WNS -1.91  cells 336
+  zipcpu__abs_div                                         synth failed: /home/devansh/Projects/timing_closure_genai/dataset/external_rtl/zipcpu/bench/formal/abs_d
+  zipcpu__abs_mpy                                         synth failed: /home/devansh/Projects/timing_closure_genai/dataset/external_rtl/zipcpu/bench/formal/abs_m
+  zipcpu__fdebug                                          synth failed: /home/devansh/Projects/timing_closure_genai/dataset/external_rtl/zipcpu/bench/formal/fdebu
+  zipcpu__ffetch                                          synth failed: /home/devansh/Projects/timing_closure_genai/dataset/external_rtl/zipcpu/bench/formal/ffetc
+  zipcpu__fmem                                            synth failed: /home/devansh/Projects/timing_closure_genai/dataset/external_rtl/zipcpu/bench/formal/fmem.
+  zipcpu__cpuops                                          synth failed: ERROR: Module `\mpyop' referenced in module `\cpuops' in cell `\thempy' is not part of the
+  zipcpu__slowmpy                                         WNS -7.23  cells 765
+  zipcpu__fwb_counter                                     synth failed: /home/devansh/Projects/timing_closure_genai/dataset/external_rtl/zipcpu/rtl/ex/fwb_counter
+  zipcpu__fwb_master                                      synth failed: /home/devansh/Projects/timing_closure_genai/dataset/external_rtl/zipcpu/rtl/ex/fwb_master.
+  zipcpu__fwb_slave                                       synth failed: /home/devansh/Projects/timing_closure_genai/dataset/external_rtl/zipcpu/rtl/ex/fwb_slave.v
+  zipcpu__sfifo                                           WNS -1.89  cells 362
+  zipcpu__wbwatchdog                                      WNS -2.16  cells 176
+  zipcpu__zipjiffies                                      WNS -5.00  cells 707
+  zipcpu__ziptimer                                        WNS -1.89  cells 394
+  zipcpu__zipdma_ctrl                                     WNS -5.09  cells 866
+  zipcpu__zipdma_fsm                                      WNS -5.03  cells 813
+  zipcpu__zipdma_rxgears                                  WNS -3.46  cells 894
+  verilog-axi__axi_ram                                    synth failed: TIMEOUT after 180s
+  verilog-axi__axil_ram                                   synth failed: TIMEOUT after 180s
+  verilog-pcie__pcie_msix                                 synth failed: TIMEOUT after 180s
+  verilog-wishbone__wb_dp_ram                             synth failed: TIMEOUT after 180s
+  verilog-wishbone__wb_ram                                synth failed: TIMEOUT after 180s
+
+kept 114 violating real modules {'cores': 4, 'picorv32': 1, 'verilog-axi': 20, 'verilog-ethernet': 42, 'verilog-i2c': 5, 'verilog-pcie': 25, 'verilog-uart': 2, 'verilog-wishbone': 4, 'wb2axip': 3, 'zipcpu': 8}; rejected {'fail': 30, 'meets timing': 11}
+wrote dataset/generated_dataset/external_real_pool.jsonl

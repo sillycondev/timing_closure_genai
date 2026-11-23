@@ -1,0 +1,121 @@
+Loading weights:   0%|          | 0/338 [00:00<?, ?it/s]Loading weights:   5%|▌         | 17/338 [00:00<00:01, 165.93it/s]Loading weights:  23%|██▎       | 78/338 [00:00<00:00, 424.44it/s]Loading weights:  43%|████▎     | 147/338 [00:00<00:00, 543.03it/s]Loading weights:  62%|██████▏   | 208/338 [00:00<00:00, 561.51it/s]Loading weights:  80%|███████▉  | 269/338 [00:00<00:00, 571.28it/s]Loading weights:  99%|█████████▊| 333/338 [00:00<00:00, 593.89it/s]Loading weights: 100%|██████████| 338/338 [00:00<00:00, 551.92it/s]
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+token filter <= 3072: kept 13/33 modules
+========================================================================
+Best-of-4 evaluation  |  model=models/sft_lora_checkpoint  |  13 samples
+========================================================================
+
+[1/13] ext_verilog-axi__axi_ram_rd_if  (external_verilog-axi, original WNS -3.29ns)
+    greedy   WNS -1.28  (delta +2.01)
+    sample1  WNS -3.29  (delta +0.00)
+    sample2  WNS -1.07  (delta +2.22)
+    sample3  WNS -1.28  (delta +2.01)
+    sample2  improved timing but FAILED functional check — rejected
+    greedy   improved timing but FAILED functional check — rejected
+    sample3  improved timing but FAILED functional check — rejected
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[2/13] ext_verilog-axi__axi_ram_wr_if  (external_verilog-axi, original WNS -3.18ns)
+    greedy   WNS -1.35  (delta +1.83)
+    sample1  WNS -1.35  (delta +1.83)
+    sample2  WNS -1.35  (delta +1.83)
+    sample3  WNS -1.42  (delta +1.76)
+    greedy   improved timing but FAILED functional check — rejected
+    sample1  improved timing but FAILED functional check — rejected
+    sample2  improved timing but FAILED functional check — rejected
+    sample3  improved timing but FAILED functional check — rejected
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[3/13] ext_verilog-axi__axil_adapter_rd  (external_verilog-axi, original WNS -1.64ns)
+    greedy   WNS -1.64  (delta +0.00)
+    sample1  WNS -1.64  (delta +0.00)
+    sample2  WNS -1.64  (delta +0.00)
+    sample3  rejected: synthesis failed
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[4/13] ext_verilog-axi__axil_reg_if_rd  (external_verilog-axi, original WNS -0.72ns)
+    greedy   WNS -0.72  (delta +0.00)
+    sample1  rejected: synthesis failed
+    sample2  WNS -0.72  (delta +0.00)
+    sample3  WNS -0.72  (delta +0.00)
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[5/13] ext_verilog-axi__axil_reg_if_wr  (external_verilog-axi, original WNS -0.67ns)
+    greedy   WNS -0.67  (delta +0.00)
+    sample1  WNS -0.66  (delta +0.01)
+    sample2  WNS -0.67  (delta +0.00)
+    sample3  WNS -1.95  (delta -1.28)
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[6/13] ext_verilog-uart__uart_rx  (external_verilog-uart, original WNS -4.25ns)
+    greedy   WNS -4.85  (delta -0.60)
+    sample1  WNS -4.25  (delta +0.00)
+    sample2  WNS -4.85  (delta -0.60)
+    sample3  WNS -4.25  (delta +0.00)
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[7/13] ext_verilog-uart__uart_tx  (external_verilog-uart, original WNS -4.30ns)
+    greedy   WNS -4.30  (delta +0.00)
+    sample1  WNS -3.70  (delta +0.60)
+    sample2  WNS -3.70  (delta +0.60)
+    sample3  WNS -4.30  (delta +0.00)
+    sample1  improved timing but FAILED functional check — rejected
+    sample2  improved timing but FAILED functional check — rejected
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[8/13] ext_zipcpu__slowmpy  (external_zipcpu, original WNS -7.23ns)
+    greedy   WNS -7.23  (delta +0.00)
+    sample1  WNS -7.23  (delta +0.00)
+    sample2  WNS -7.23  (delta +0.00)
+    sample3  WNS -7.23  (delta +0.00)
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[9/13] ext_zipcpu__wbwatchdog  (external_zipcpu, original WNS -2.16ns)
+    greedy   WNS -2.16  (delta +0.00)
+    sample1  WNS -2.16  (delta +0.00)
+    sample2  rejected: synthesis failed
+    sample3  WNS -4.82  (delta -2.66)
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[10/13] ext_zipcpu__zipdma_ctrl  (external_zipcpu, original WNS -5.09ns)
+    greedy   WNS -4.44  (delta +0.65)
+    sample1  rejected: synthesis failed
+    sample2  WNS -4.44  (delta +0.65)
+    sample3  rejected: synthesis failed
+    greedy   improved timing but FAILED functional check — rejected
+    sample2  improved timing but FAILED functional check — rejected
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[11/13] ext_zipcpu__zipdma_fsm  (external_zipcpu, original WNS -5.03ns)
+    greedy   WNS -5.03  (delta +0.00)
+    sample1  WNS -5.03  (delta +0.00)
+    sample2  WNS -5.03  (delta +0.00)
+    sample3  WNS -5.03  (delta +0.00)
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[12/13] ext_zipcpu__zipjiffies  (external_zipcpu, original WNS -5.00ns)
+    greedy   WNS -5.00  (delta +0.00)
+    sample1  WNS -5.00  (delta +0.00)
+    sample2  rejected: synthesis failed
+    sample3  WNS +0.00  (delta +5.00)
+    sample3  improved timing but FAILED functional check — rejected
+  -> no verified improvement; keeping original RTL (delta 0)
+
+[13/13] ext_zipcpu__ziptimer  (external_zipcpu, original WNS -1.89ns)
+    greedy   WNS -1.89  (delta +0.00)
+    sample1  WNS -1.89  (delta +0.00)
+    sample2  WNS -1.89  (delta +0.00)
+    sample3  WNS -1.89  (delta +0.00)
+  -> no verified improvement; keeping original RTL (delta 0)
+
+========================================================================
+SUMMARY
+  samples                                  : 13
+  single-shot (greedy, no fallback)        : avg delta +0.299 ns  [13/13 synthesized; rest excluded]
+  best-of-4 timing-only (no function gate): avg delta +0.792 ns
+  best-of-4 + FUNCTION GATE + fallback    : avg delta +0.000 ns  [0/13 verified improvements, 13 kept original]
+  timing closure rate (final WNS >= 0)     : 0/13
+    external_verilog-axi gated avg delta +0.000 ns over 5  (0 verified improvements)
+    external_verilog-uart gated avg delta +0.000 ns over 2  (0 verified improvements)
+    external_zipcpu    gated avg delta +0.000 ns over 6  (0 verified improvements)
+========================================================================
